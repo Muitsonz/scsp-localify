@@ -10,6 +10,7 @@
 #include <cpprest/http_client.h>
 #include <cpprest/filestream.h>
 #include <boost/beast/core/detail/base64.hpp>
+#include <safetyhook.hpp>
 
 #define PRINT(var) std::cout << #var << " = " << var << std::endl;
 
@@ -157,27 +158,44 @@ void convertPtrType(T* cvtTarget, TF func_ptr) {
 }
 
 #pragma region HOOK_MACRO
-#define ADD_HOOK(_name_, _fmt_) \
-	auto _name_##_offset = reinterpret_cast<void*>(_name_##_addr); \
- 	\
-	const auto _name_##stat1 = MH_CreateHook(_name_##_offset, _name_##_hook, &_name_##_orig); \
-	const auto _name_##stat2 = MH_EnableHook(_name_##_offset); \
-	printf(_fmt_##" (%s, %s)\n", _name_##_offset, MH_StatusToString(_name_##stat1), MH_StatusToString(_name_##stat2)); 
+//#define ADD_HOOK(_name_, _fmt_) \
+//	auto _name_##_offset = reinterpret_cast<void*>(_name_##_addr); \
+// 	\
+//	const auto _name_##stat1 = MH_CreateHook(_name_##_offset, _name_##_hook, &_name_##_orig); \
+//	const auto _name_##stat2 = MH_EnableHook(_name_##_offset); \
+//	printf(_fmt_##" (%s, %s)\n", _name_##_offset, MH_StatusToString(_name_##stat1), MH_StatusToString(_name_##stat2)); 
+//#define HOOK_ORIG_TYPE void*
 #pragma endregion
+void AddSafetyHook(const char* orig_name, void* orig, void* hook, SafetyHookInline& result) {
+	try {
+		auto h = safetyhook::create_inline(orig, hook); // may throw
+		if (!h) {
+			std::cout << "[ERROR] Failed to create hook for \"" << orig_name << "\"(" << orig << "): returned nullptr" << std::endl;
+			return;
+		}
+		result = std::move(h);
+		std::cout << "Hook created for \"" << orig_name << "\"(" << orig << ")" << std::endl;
+	}
+	catch (const std::exception& e) {
+		std::cout << "[ERROR] Failed to create hook for \"" << orig_name << "\"(" << orig << "): " << e.what() << std::endl;
+	}
+	catch (...) {
+		std::cout << "[ERROR] Failed to create hook for \"" << orig_name << "\"(" << orig << "): unknown exception" << std::endl;
+	}
+}
+#define ADD_HOOK(_name_, _nothing_) AddSafetyHook(#_name_, (void*)_name_##_addr, (void*)_name_##_hook, _name_##_orig);
+#define HOOK_ORIG_TYPE SafetyHookInline
 
 bool exd = false;
-void* SetResolution_orig;
-void* AssembleCharacter_ApplyParam_orig;
+HOOK_ORIG_TYPE SetResolution_orig{};
+HOOK_ORIG_TYPE AssembleCharacter_ApplyParam_orig{};
 Il2CppString* (*environment_get_stacktrace)();
 
 
 void CharaParam_t::Apply() {
-	const auto ApplyParamFunc = reinterpret_cast<void (*)(void*, float, float, float, float, float)>(
-		AssembleCharacter_ApplyParam_orig
-		);
 	auto currObjPtr = getObjPtr();
 	if (currObjPtr) {
-		ApplyParamFunc(currObjPtr, height + baseParam.height, bust + baseParam.bust,
+		AssembleCharacter_ApplyParam_orig.call(currObjPtr, height + baseParam.height, bust + baseParam.bust,
 			head + baseParam.head, arm + baseParam.arm, hand + baseParam.hand);
 	}
 }
@@ -477,7 +495,7 @@ namespace
 		if (ReplaceFontGcHandle)
 		{
 			replaceFont = il2cpp_gchandle_get_target(ReplaceFontGcHandle);
-			
+
 			// 加载场景时会被 Resources.UnloadUnusedAssets 干掉，且不受 DontDestroyOnLoad 影响，暂且判断是否存活，并在必要的时候重新加载
 			// TODO: 考虑挂载到 GameObject 上
 			// AssetBundle 不会被干掉
@@ -504,7 +522,7 @@ namespace
 		return replaceFont;
 	}
 
-	void* DataFile_GetBytes_orig;
+	HOOK_ORIG_TYPE DataFile_GetBytes_orig{};
 	bool (*DataFile_IsKeyExist)(Il2CppString*);
 
 	void set_fps_hook(int value);
@@ -515,7 +533,7 @@ namespace
 	// 调用之前检查 DataFile_IsKeyExist
 	void fmtAndDumpJsonBytesData(const std::wstring& dumpName) {
 		const auto dumpNameIl = il2cpp_symbols::NewWStr(dumpName);
-		auto dataBytes = reinterpret_cast<void* (*)(Il2CppString*)>(DataFile_GetBytes_orig)(dumpNameIl);
+		auto dataBytes = DataFile_GetBytes_orig.call<void*>(dumpNameIl);
 		auto newStr = bytesToIl2cppString(dataBytes);
 		auto writeWstr = std::wstring(newStr->start_char);
 		const std::wstring searchStr = L"\r";
@@ -682,11 +700,11 @@ namespace
 	}
 
 	// NOT HOOK
-	void* PIdolDetailPopupViewModel_Create_orig;
+	HOOK_ORIG_TYPE PIdolDetailPopupViewModel_Create_orig{};
 	void* PIdolDetailPopupViewModel_Create_hook(void* produceIdol, void* costumeSetInfoList, void* idolBase, void* idolParameter, bool isChangeableIdolSkill, bool isChangeableFavorite, void* produceAdvStatusList, bool isPlayableAdv, bool inLive, bool upgradingButtonActive) {
-		auto ret = reinterpret_cast<decltype(PIdolDetailPopupViewModel_Create_hook)*>(PIdolDetailPopupViewModel_Create_orig)(
+		auto ret = PIdolDetailPopupViewModel_Create_orig.call<void*>(
 			produceIdol, costumeSetInfoList, idolBase, idolParameter, isChangeableIdolSkill, isChangeableFavorite, produceAdvStatusList, isPlayableAdv, inLive, upgradingButtonActive
-			);
+		);
 		return ret;
 		/*  // 功能被 ScenarioContentViewModel_ctor_hook 替代
 		static auto get_EventList = reinterpret_cast<void* (*)(void*)>(
@@ -712,7 +730,7 @@ namespace
 		return ret;*/
 	}
 
-	void* ScenarioContentViewModel_ctor_orig;
+	HOOK_ORIG_TYPE ScenarioContentViewModel_ctor_orig{};
 	void ScenarioContentViewModel_ctor_hook(void* _this, void* scenarioID, Il2CppString* title, Il2CppString* summary, bool isLocked,
 		bool isAdvPlayable, Il2CppString* alias, Il2CppString* characterName, int unlockLevel) {
 
@@ -722,10 +740,10 @@ namespace
 				isLocked = true;
 			}
 		}
-		return reinterpret_cast<decltype(ScenarioContentViewModel_ctor_hook)*>(ScenarioContentViewModel_ctor_orig)(_this, scenarioID, title, summary, isLocked, isAdvPlayable, alias, characterName, unlockLevel);
+		return ScenarioContentViewModel_ctor_orig.call(_this, scenarioID, title, summary, isLocked, isAdvPlayable, alias, characterName, unlockLevel);
 	}
 
-	void* LocalizationManager_GetTextOrNull_orig;
+	HOOK_ORIG_TYPE LocalizationManager_GetTextOrNull_orig{};
 	Il2CppString* LocalizationManager_GetTextOrNull_hook(void* _this, Il2CppString* category, int id) {
 		if (g_max_fps != -1) set_fps_hook(g_max_fps);
 		if (g_vsync_count != -1) set_vsync_count_hook(g_vsync_count);
@@ -736,12 +754,12 @@ namespace
 			return il2cpp_string_new(resultText.c_str());
 		}
 		// GG category: mlPublicText_GameGuard, id: 1
-		return reinterpret_cast<decltype(LocalizationManager_GetTextOrNull_hook)*>(LocalizationManager_GetTextOrNull_orig)(_this, category, id);
+		return LocalizationManager_GetTextOrNull_orig.call<Il2CppString*>(_this, category, id);
 	}
 
-	void* GetResolutionSize_orig;
+	HOOK_ORIG_TYPE GetResolutionSize_orig{};
 	Vector2Int_t GetResolutionSize_hook(void* camera, void* method) {
-		auto ret = reinterpret_cast<decltype(GetResolutionSize_hook)*>(GetResolutionSize_orig)(camera, method);
+		auto ret = GetResolutionSize_orig.call<Vector2Int_t>(camera, method);
 		if (g_3d_resolution_scale != 1.0f) {
 			ret.x *= g_3d_resolution_scale;
 			ret.y *= g_3d_resolution_scale;
@@ -751,11 +769,11 @@ namespace
 		return ret;
 	}
 
-	void* AssetBundle_LoadAsset_orig;
+	HOOK_ORIG_TYPE AssetBundle_LoadAsset_orig{};
 	void* AssetBundle_LoadAsset_hook(void* _this, Il2CppString* name, Il2CppReflectionType* type)
 	{
 		// printf("AssetBundle_LoadAsset: %ls\n", name->start_char);
-		return reinterpret_cast<decltype(AssetBundle_LoadAsset_hook)*>(AssetBundle_LoadAsset_orig)(_this, name, type);
+		return AssetBundle_LoadAsset_orig.call<void*>(_this, name, type);
 	}
 
 	class SpanReader {
@@ -1116,15 +1134,15 @@ namespace
 		return dumpCount;
 	}
 
-	void* LiveMVOverlayView_UpdateLyrics_orig;
+	HOOK_ORIG_TYPE LiveMVOverlayView_UpdateLyrics_orig{};
 	void LiveMVOverlayView_UpdateLyrics_hook(void* _this, Il2CppString* text) {
 		const std::wstring origWstr(text->start_char);
 		const auto newText = SCLocal::getLyricsTrans(origWstr);
-		return reinterpret_cast<decltype(LiveMVOverlayView_UpdateLyrics_hook)*>(LiveMVOverlayView_UpdateLyrics_orig)(_this, il2cpp_string_new(newText.c_str()));
+		return LiveMVOverlayView_UpdateLyrics_orig.call(_this, il2cpp_string_new(newText.c_str()));
 	}
 
 	std::pair<std::wstring, std::string> lastLrc{};
-	void* TimelineController_SetLyric_orig;
+	HOOK_ORIG_TYPE TimelineController_SetLyric_orig{};
 	void TimelineController_SetLyric_hook(void* _this, Il2CppString* text) {
 		const std::wstring origWstr(text->start_char);
 		std::string newText = "";
@@ -1138,17 +1156,17 @@ namespace
 				newText = lastLrc.second;
 			}
 		}
-		return reinterpret_cast<decltype(TimelineController_SetLyric_hook)*>(TimelineController_SetLyric_orig)(_this, il2cpp_string_new(newText.c_str()));
+		return TimelineController_SetLyric_orig.call(_this, il2cpp_string_new(newText.c_str()));
 	}
 
-	void* TMP_Text_set_text_orig;
+	HOOK_ORIG_TYPE TMP_Text_set_text_orig{};
 	void TMP_Text_set_text_hook(void* _this, Il2CppString* value) {
 		if (needPrintStack) {
 			//wprintf(L"TMP_Text_set_text: %ls\n", value->start_char);
 			//printf("%ls\n\n", environment_get_stacktrace()->start_char);
 		}
 		//if(value) value = il2cpp_symbols::NewWStr(std::format(L"(h){}", std::wstring(value->start_char)));
-		reinterpret_cast<decltype(TMP_Text_set_text_hook)*>(TMP_Text_set_text_orig)(
+		TMP_Text_set_text_orig.call(
 			_this, value
 			);
 	}
@@ -1184,7 +1202,7 @@ namespace
 	// void* lastUpdateFontPtr = nullptr;
 	std::unordered_set<void*> updatedFontPtrs{};
 
-	void* UITextMeshProUGUI_Awake_orig;
+	HOOK_ORIG_TYPE UITextMeshProUGUI_Awake_orig{};
 	void UITextMeshProUGUI_Awake_hook(void* _this) {
 		static auto get_Text = reinterpret_cast<Il2CppString * (*)(void*)>(
 			il2cpp_symbols::get_method_pointer(
@@ -1245,13 +1263,13 @@ namespace
 			}*/
 		}
 		set_fontSize(_this, get_fontSize(_this) + g_font_size_offset);
-		reinterpret_cast<decltype(UITextMeshProUGUI_Awake_hook)*>(UITextMeshProUGUI_Awake_orig)(_this);
+		UITextMeshProUGUI_Awake_orig.call(_this);
 	}
 
-	void* ScenarioManager_Init_orig;
+	HOOK_ORIG_TYPE ScenarioManager_Init_orig{};
 	void* ScenarioManager_Init_hook(void* retstr, void* _this, Il2CppString* scrName) {
 		// printf("ScenarioManager_Init: %ls\n%ls\n\n", scrName->start_char, environment_get_stacktrace()->start_char);
-		return reinterpret_cast<decltype(ScenarioManager_Init_hook)*>(ScenarioManager_Init_orig)(retstr, _this, scrName);
+		return ScenarioManager_Init_orig.call<void*>(retstr, _this, scrName);
 	}
 
 	void* DataFile_GetBytes_hook(Il2CppString* path) {
@@ -1265,7 +1283,7 @@ namespace
 			return readFileAllBytes(localFileName);
 		}
 
-		auto ret = reinterpret_cast<decltype(DataFile_GetBytes_hook)*>(DataFile_GetBytes_orig)(path);
+		auto ret = DataFile_GetBytes_orig.call<void*>(path);
 		if (g_auto_dump_all_json) {
 			if (pathStrView.ends_with(L".json")) {
 				auto basePath = std::filesystem::path("dumps") / "autoDumpJson";
@@ -1304,7 +1322,7 @@ namespace
 				g_start_resolution_h = height;
 				g_start_resolution_fullScreen = fullscreen;
 			}
-			return reinterpret_cast<decltype(SetResolution_hook)*>(SetResolution_orig)(g_start_resolution_w,
+			return SetResolution_orig.call(g_start_resolution_w,
 				g_start_resolution_h, g_start_resolution_fullScreen);
 		}
 		return;
@@ -1316,14 +1334,14 @@ namespace
 		*/
 	}
 
-	void* InvokeMoveNext_orig;
+	HOOK_ORIG_TYPE InvokeMoveNext_orig{};
 	void InvokeMoveNext_hook(void* enumerator, void* returnValueAddress) {
 		MHotkey::start_hotkey(hotKey);
-		return reinterpret_cast<decltype(InvokeMoveNext_hook)*>(InvokeMoveNext_orig)(enumerator, returnValueAddress);
+		return InvokeMoveNext_orig.call(enumerator, returnValueAddress);
 	}
 
 	// Normal 3D Live
-	void* DepthOfFieldClip_CreatePlayable_orig;
+	HOOK_ORIG_TYPE DepthOfFieldClip_CreatePlayable_orig{};
 	void* DepthOfFieldClip_CreatePlayable_hook(void* retstr, void* _this, void* graph, void* go, void* mtd) {
 		if (g_enable_free_camera) {
 			static auto DepthOfFieldClip_klass = il2cpp_symbols::get_class("PRISM.Legacy.dll", "PRISM", "DepthOfFieldClip");
@@ -1347,11 +1365,11 @@ namespace
 
 			// printf("DepthOfFieldClip_CreatePlayable, focusDistance: %f, aperture: %f, focalLength: %f\n", focusDistance, aperture, focalLength);
 		}
-		return reinterpret_cast<decltype(DepthOfFieldClip_CreatePlayable_hook)*>(DepthOfFieldClip_CreatePlayable_orig)(retstr, _this, graph, go, mtd);
+		return DepthOfFieldClip_CreatePlayable_orig.call<void*>(retstr, _this, graph, go, mtd);
 	}
 
 	// HDR Live
-	void* PostProcess_DepthOfFieldClip_CreatePlayable_orig;
+	HOOK_ORIG_TYPE PostProcess_DepthOfFieldClip_CreatePlayable_orig{};
 	void PostProcess_DepthOfFieldClip_CreatePlayable_hook(void* retstr, void* _this, void* graph, void* go, void* mtd) {
 
 		if (g_enable_free_camera) {
@@ -1376,36 +1394,36 @@ namespace
 			// printf("DepthOfFieldClip_CreatePlayable, focusDistance: %f, aperture: %f, focalLength: %f\n", focusDistance, aperture, focalLength);
 		}
 
-		reinterpret_cast<decltype(PostProcess_DepthOfFieldClip_CreatePlayable_hook)*>(PostProcess_DepthOfFieldClip_CreatePlayable_orig)(retstr, _this, graph, go, mtd);
+		PostProcess_DepthOfFieldClip_CreatePlayable_orig.call(retstr, _this, graph, go, mtd);
 	}
 
 	// 已过时
-	void* Live_SetEnableDepthOfField_orig;
+	HOOK_ORIG_TYPE Live_SetEnableDepthOfField_orig{};
 	void Live_SetEnableDepthOfField_hook(void* _this, bool isEnable) {
 		if (g_enable_free_camera) {
 			isEnable = false;
 		}
-		return reinterpret_cast<decltype(Live_SetEnableDepthOfField_hook)*>(Live_SetEnableDepthOfField_orig)(_this, isEnable);
+		return Live_SetEnableDepthOfField_orig.call(_this, isEnable);
 	}
 
 	// 未hook
-	void* Live_Update_orig;
+	HOOK_ORIG_TYPE Live_Update_orig{};
 	void Live_Update_hook(void* _this) {
-		reinterpret_cast<decltype(Live_Update_hook)*>(Live_Update_orig)(_this);
+		Live_Update_orig.call(_this);
 		if (g_enable_free_camera) {
 			// Live_SetEnableDepthOfField_hook(_this, false);
 		}
 	}
 
 	bool isCancelTryOn = false;
-	void* LiveCostumeChangeView_setTryOnMode_orig;
+	HOOK_ORIG_TYPE LiveCostumeChangeView_setTryOnMode_orig{};
 	void LiveCostumeChangeView_setTryOnMode_hook(void* _this, void* idol, bool isTryOn) {
 		if (!isTryOn) isCancelTryOn = true;
-		reinterpret_cast<decltype(LiveCostumeChangeView_setTryOnMode_hook)*>(LiveCostumeChangeView_setTryOnMode_orig)(_this, idol, isTryOn);
+		LiveCostumeChangeView_setTryOnMode_orig.call(_this, idol, isTryOn);
 		isCancelTryOn = false;
 	}
 
-	void* LiveCostumeChangeView_setIdolCostume_orig;
+	HOOK_ORIG_TYPE LiveCostumeChangeView_setIdolCostume_orig{};
 	void LiveCostumeChangeView_setIdolCostume_hook(void* _this, void* idol, int category, int costumeId) {
 		if (g_allow_use_tryon_costume) {
 			static auto iidol_klass = il2cpp_symbols::get_class_from_instance(idol);
@@ -1417,133 +1435,11 @@ namespace
 			if (isCancelTryOn) return;
 		}
 
-		return reinterpret_cast<decltype(LiveCostumeChangeView_setIdolCostume_hook)*>(LiveCostumeChangeView_setIdolCostume_orig)(_this, idol, category, costumeId);
+		return LiveCostumeChangeView_setIdolCostume_orig.call(_this, idol, category, costumeId);
 	}
 
-	void* (*LiveCostumeChangeModel_get_Idol)(void*);
 
-#define replaceResourceId(currHook, currOrig) \
-	const auto idol = LiveCostumeChangeModel_get_Idol(_this);\
-	static auto iidol_klass = il2cpp_symbols::get_class_from_instance(idol);\
-	static auto get_CharacterId_mtd = il2cpp_class_get_method_from_name(iidol_klass, "get_CharacterId", 0);\
-	const auto idolId = reinterpret_cast<int (*)(void*)>(get_CharacterId_mtd->methodPointer)(idol);\
-	const auto resId = il2cpp_symbols::read_field<int>(ret, resourceId_field);\
-	printf(#currHook" idol: %d, dressId: %d, ResId: %d, this at %p\n", idolId, id, resId, _this);\
-	\
-	int replaceDressId = baseId + idolId * 1000;\
-	\
-	auto replaceResId = id == replaceDressId ? baseResId : il2cpp_symbols::read_field<int>(ret, resourceId_field);\
-	auto newRet = reinterpret_cast<decltype(currHook)*>(currOrig)(_this, replaceDressId);\
-	if (!newRet) {\
-		printf("ReplaceId: %d not found. try++\n", replaceDressId);\
-		replaceDressId++;\
-		newRet = reinterpret_cast<decltype(currHook)*>(currOrig)(_this, replaceDressId);\
-		if (!newRet){\
-			printf("replaceId: %d not found. Replace failed.\n", replaceDressId);\
-			return ret;\
-		}\
-		replaceResId = id == replaceDressId ? baseResId : il2cpp_symbols::read_field<int>(ret, resourceId_field);\
-	}\
-	il2cpp_symbols::write_field(newRet, resourceId_field, replaceResId)
-
-
-	void* LiveCostumeChangeModel_GetDress_orig;
-	void* LiveCostumeChangeModel_GetDress_hook(void* _this, int id) {  // 替换服装 ResID
-		auto ret = reinterpret_cast<decltype(LiveCostumeChangeModel_GetDress_hook)*>(LiveCostumeChangeModel_GetDress_orig)(_this, id);
-		if (!g_unlock_all_dress) return ret;
-		if (!ret) {
-			printf("LiveCostumeChangeModel_GetDress returns NULL ResId: %d, this at %p\n", id, _this);
-			return ret;
-		}
-		static auto ret_klass = il2cpp_symbols::get_class_from_instance(ret);
-		static auto resourceId_field = il2cpp_class_get_field_from_name(ret_klass, "resourceId_");
-
-		const auto baseId = 100001;
-		const auto baseResId = 1;
-		replaceResourceId(LiveCostumeChangeModel_GetDress_hook, LiveCostumeChangeModel_GetDress_orig);
-		return newRet;
-	}
-
-	void* LiveCostumeChangeModel_GetAccessory_orig;
-	void* LiveCostumeChangeModel_GetAccessory_hook(void* _this, int id) {  // 替换饰品 ResID
-		auto ret = reinterpret_cast<decltype(LiveCostumeChangeModel_GetAccessory_hook)*>(LiveCostumeChangeModel_GetAccessory_orig)(_this, id);
-		if (!(g_unlock_all_dress && g_unlock_all_headwear)) return ret;
-		if (!ret) {
-			printf("LiveCostumeChangeModel_GetAccessory returns NULL ResId: %d, this at %p\n", id, _this);
-			return ret;
-		}
-		static auto ret_klass = il2cpp_symbols::get_class_from_instance(ret);
-		static auto resourceId_field = il2cpp_class_get_field_from_name(ret_klass, "resourceId_");
-		static auto accessoryType_field = il2cpp_class_get_field_from_name(ret_klass, "accessoryType_");
-
-		const auto accessoryType = il2cpp_symbols::read_field<int>(ret, accessoryType_field);
-		printf("accessoryType: %d\n", accessoryType);
-		int baseId;
-		int baseResId;
-		switch (accessoryType) {
-		case 0x1: {  // Glasses
-			baseId = 800006;
-			baseResId = 1103400;
-		}; break;
-		case 0x2: {  // Earrings
-			baseId = 800001;
-			baseResId = 2101300;
-		}; break;
-		case 0x3: {  // Makeup
-			baseId = 800009;
-			baseResId = 9100103;
-		}; break;
-		default: return ret;
-		}
-
-		replaceResourceId(LiveCostumeChangeModel_GetAccessory_hook, LiveCostumeChangeModel_GetAccessory_orig);
-		// LiveCostumeChangeModel_GetAccessory_hook idol : 15, dressId : 815004, ResId : 1103200, this at 0000021E62ADDD80
-		return newRet;
-	}
-
-	void* LiveCostumeChangeModel_GetHairstyle_orig;
-	void* LiveCostumeChangeModel_GetHairstyle_hook(void* _this, int id) {  // 替换头发 ResID
-		auto ret = reinterpret_cast<decltype(LiveCostumeChangeModel_GetHairstyle_hook)*>(LiveCostumeChangeModel_GetHairstyle_orig)(_this, id);
-		if (!(g_unlock_all_dress && g_unlock_all_headwear)) return ret;
-		if (!ret) {
-			printf("LiveCostumeChangeModel_GetHairstyle returns NULL ResId: %d, this at %p\n", id, _this);
-			return ret;
-		}
-		static auto ret_klass = il2cpp_symbols::get_class_from_instance(ret);
-		static auto resourceId_field = il2cpp_class_get_field_from_name(ret_klass, "resourceId_");
-
-		const auto baseId = 600001;
-		const auto baseResId = 1;
-		replaceResourceId(LiveCostumeChangeModel_GetHairstyle_hook, LiveCostumeChangeModel_GetHairstyle_orig);
-
-		static auto accessoryResourceIdList_field = il2cpp_class_get_field_from_name(ret_klass, "accessoryResourceIdList_");
-		const auto replaceaccessoryResourceIdList = il2cpp_symbols::read_field(ret, accessoryResourceIdList_field);
-		if (id == replaceDressId) {
-			static auto RepeatedField_klass = il2cpp_symbols::get_class_from_instance(replaceaccessoryResourceIdList);
-			static auto RepeatedField_Add_mtd = il2cpp_class_get_method_from_name(RepeatedField_klass, "Add", 1);
-			static auto RepeatedField_Add = reinterpret_cast<void (*)(void*, int, void* mtd)>(RepeatedField_Add_mtd->methodPointer);
-			static auto RepeatedField_ctor_mtd = il2cpp_class_get_method_from_name(RepeatedField_klass, ".ctor", 0);
-			static auto RepeatedField_ctor = reinterpret_cast<void (*)(void*, void* mtd)>(RepeatedField_ctor_mtd->methodPointer);
-
-			auto newRepeatedField = il2cpp_object_new(RepeatedField_klass);
-			RepeatedField_ctor(newRepeatedField, RepeatedField_ctor_mtd);
-			RepeatedField_Add(newRepeatedField, 0, RepeatedField_ctor_mtd);
-			RepeatedField_Add(newRepeatedField, 0, RepeatedField_ctor_mtd);
-			il2cpp_symbols::write_field(newRet, accessoryResourceIdList_field, newRepeatedField);
-		}
-		else {
-			il2cpp_symbols::write_field(newRet, accessoryResourceIdList_field, replaceaccessoryResourceIdList);
-		}
-
-		return newRet;
-	}
-
-	bool confirmationingModel = false;
-	std::map<int, void*> cacheDressMap{};
-	std::map<int, void*> cacheHairMap{};
-	std::map<int, void*> cacheAccessoryMap{};
-
-	void* LiveCostumeChangeModel_ctor_orig;
+	HOOK_ORIG_TYPE LiveCostumeChangeModel_ctor_orig{};
 	void LiveCostumeChangeModel_ctor_hook(void* _this, void* reply, void* idol, int costumeType, bool forceDressOrdered) {  // 添加服装到 dressDic
 		/*
 		static auto iidol_klass = il2cpp_symbols::get_class_from_instance(idol);
@@ -1553,43 +1449,43 @@ namespace
 			printf("LiveCostumeChangeModel_ctor idolId: %d, costumeType: %d\n", idolId, costumeType);
 		}
 		*/
-		reinterpret_cast<decltype(LiveCostumeChangeModel_ctor_hook)*>(LiveCostumeChangeModel_ctor_orig)(_this, reply, idol, costumeType, forceDressOrdered);
+		LiveCostumeChangeModel_ctor_orig.call(_this, reply, idol, costumeType, forceDressOrdered);
 
-		if (g_unlock_all_dress && (costumeType == 1)) {
-			static auto LiveCostumeChangeModel_klass = il2cpp_symbols::get_class("PRISM.Adapters.dll", "PRISM.Adapters", "LiveCostumeChangeModel");
-			static auto dressDic_field = il2cpp_class_get_field_from_name(LiveCostumeChangeModel_klass, "dressDic");
-			static auto hairstyleDic_field = il2cpp_class_get_field_from_name(LiveCostumeChangeModel_klass, "hairstyleDic");
-			static auto accessoryDic_field = il2cpp_class_get_field_from_name(LiveCostumeChangeModel_klass, "accessoryDic");
-
-			auto dressDicInstance = il2cpp_field_get_value_object(dressDic_field, _this);
-			// auto hairstyleDicInstance = il2cpp_field_get_value_object(hairstyleDic_field, _this);
-			// auto accessoryDicInstance = il2cpp_field_get_value_object(accessoryDic_field, _this);
-
-			auto dressDic = Utils::CSDictEditor<int>(dressDicInstance, "System.Collections.Generic.Dictionary`2[System.Int32, PRISM.Module.Networking.ICostumeStatus]");
-			// auto hairstyleDic = Utils::CSDictEditor<int>(hairstyleDicInstance, "System.Collections.Generic.Dictionary`2[System.Int32, PRISM.Module.Networking.IHairstyleStatus]");
-			// auto accessoryDic = Utils::CSDictEditor<int>(accessoryDicInstance, "System.Collections.Generic.Dictionary`2[System.Int32, PRISM.Module.Networking.IAccessoryStatus]");
-
-			const auto addToDic = [](std::map<int, void*>& cacheMap, Utils::CSDictEditor<int>& dict) {
-				for (auto& i : cacheMap) {
-					const auto currId = i.first;
-					if (!dict.ContainsKey(currId)) {
-						auto& costumeStat = i.second;
-						// printf("add: %p\n", costumeStat);
-						dict.Add(currId, costumeStat);
-					}
-				}};
-
-			addToDic(cacheDressMap, dressDic);
-			// addToDic(cacheHairMap, hairstyleDic);  // TODO PRISM.ResourceManagement.ResourceLoader._throwMissingKeyException
-			// addToDic(cacheAccessoryMap, accessoryDic);  // TODO PRISM.ResourceManagement.ResourceLoader._throwMissingKeyException
-		}
+		//if (g_unlock_all_dress && (costumeType == 1)) {
+		//	static auto LiveCostumeChangeModel_klass = il2cpp_symbols::get_class("PRISM.Adapters.dll", "PRISM.Adapters", "LiveCostumeChangeModel");
+		//	static auto dressDic_field = il2cpp_class_get_field_from_name(LiveCostumeChangeModel_klass, "dressDic");
+		//	static auto hairstyleDic_field = il2cpp_class_get_field_from_name(LiveCostumeChangeModel_klass, "hairstyleDic");
+		//	static auto accessoryDic_field = il2cpp_class_get_field_from_name(LiveCostumeChangeModel_klass, "accessoryDic");
+		//
+		//	auto dressDicInstance = il2cpp_field_get_value_object(dressDic_field, _this);
+		//	// auto hairstyleDicInstance = il2cpp_field_get_value_object(hairstyleDic_field, _this);
+		//	// auto accessoryDicInstance = il2cpp_field_get_value_object(accessoryDic_field, _this);
+		//
+		//	auto dressDic = Utils::CSDictEditor<int>(dressDicInstance, "System.Collections.Generic.Dictionary`2[System.Int32, PRISM.Module.Networking.ICostumeStatus]");
+		//	// auto hairstyleDic = Utils::CSDictEditor<int>(hairstyleDicInstance, "System.Collections.Generic.Dictionary`2[System.Int32, PRISM.Module.Networking.IHairstyleStatus]");
+		//	// auto accessoryDic = Utils::CSDictEditor<int>(accessoryDicInstance, "System.Collections.Generic.Dictionary`2[System.Int32, PRISM.Module.Networking.IAccessoryStatus]");
+		//
+		//	const auto addToDic = [](std::map<int, void*>& cacheMap, Utils::CSDictEditor<int>& dict) {
+		//		for (auto& i : cacheMap) {
+		//			const auto currId = i.first;
+		//			if (!dict.ContainsKey(currId)) {
+		//				auto& costumeStat = i.second;
+		//				// printf("add: %p\n", costumeStat);
+		//				dict.Add(currId, costumeStat);
+		//			}
+		//		}};
+		//
+		//	addToDic(cacheDressMap, dressDic);
+		//	// addToDic(cacheHairMap, hairstyleDic);  // TODO PRISM.ResourceManagement.ResourceLoader._throwMissingKeyException
+		//	// addToDic(cacheAccessoryMap, accessoryDic);  // TODO PRISM.ResourceManagement.ResourceLoader._throwMissingKeyException
+		//}
 	}
 
 
 	// [Muitsonz/#1](https://github.com/Muitsonz/scsp-localify/issues/1)
-	void* CostumeChangeView_Reload_orig;
+	HOOK_ORIG_TYPE CostumeChangeView_Reload_orig{};
 	void* CostumeChangeView_Reload_hook(void* _this, void* viewModel) {
-		auto ret = reinterpret_cast<decltype(CostumeChangeView_Reload_hook)*>(CostumeChangeView_Reload_orig)(_this, viewModel);
+		auto ret = CostumeChangeView_Reload_orig.call<void*>(_this, viewModel);
 
 		static void* klass_CostumeChangeViewModel;
 		static MethodInfo* mtd_CostumeChangeViewModel_GetPreviewUnitIdol;
@@ -1600,7 +1496,7 @@ namespace
 				if (klass_CostumeChangeViewModel == nullptr) {
 					klass_CostumeChangeViewModel = il2cpp_symbols::get_class_from_instance(viewModel);
 					mtd_CostumeChangeViewModel_GetPreviewUnitIdol = il2cpp_class_get_method_from_name(klass_CostumeChangeViewModel, "GetPreviewUnitIdol", 0);
-					func_CostumeChangeViewModel_GetPreviewUnitIdol = reinterpret_cast<managed::UnitIdol* (*)(void* _this, void* mtd)>(mtd_CostumeChangeViewModel_GetPreviewUnitIdol->methodPointer);
+					func_CostumeChangeViewModel_GetPreviewUnitIdol = reinterpret_cast<managed::UnitIdol * (*)(void* _this, void* mtd)>(mtd_CostumeChangeViewModel_GetPreviewUnitIdol->methodPointer);
 				}
 
 				auto idol = func_CostumeChangeViewModel_GetPreviewUnitIdol(viewModel, mtd_CostumeChangeViewModel_GetPreviewUnitIdol);
@@ -1624,7 +1520,7 @@ namespace
 	}
 
 	// [Muitsonz/#1](https://github.com/Muitsonz/scsp-localify/issues/1)
-	void* LiveMVStartData_ctor_orig;
+	HOOK_ORIG_TYPE LiveMVStartData_ctor_orig{};
 	void* LiveMVStartData_ctor_hook(void* _this, void* musicMaster, void* onStageIdols, int cameraIndex, bool isVocalSeparatedOn, int backgroundMode, int renderingDynamicRange, int soundEffectMode) {
 
 #if __TOOL_HOOK_NETWORKING__
@@ -1637,7 +1533,7 @@ namespace
 			printf("isVocalSeparatedOn is overriden to true.\n");
 		}
 
-		auto ret = reinterpret_cast<decltype(LiveMVStartData_ctor_hook)*>(LiveMVStartData_ctor_orig)(_this, musicMaster, onStageIdols, cameraIndex, isVocalSeparatedOn, backgroundMode, renderingDynamicRange, soundEffectMode);
+		auto ret = LiveMVStartData_ctor_orig.call<void*>(_this, musicMaster, onStageIdols, cameraIndex, isVocalSeparatedOn, backgroundMode, renderingDynamicRange, soundEffectMode);
 
 		__try {
 			auto idolsLength = il2cpp_array_length(onStageIdols);
@@ -1737,10 +1633,10 @@ namespace
 				charaParam.emplace(showObjName, CharaParam_t(height, bust, head, arm, hand, mdl));
 			}
 		}
-		return reinterpret_cast<decltype(AssembleCharacter_ApplyParam_hook)*>(AssembleCharacter_ApplyParam_orig)(mdl, height, bust, head, arm, hand);
+		return AssembleCharacter_ApplyParam_orig.call(mdl, height, bust, head, arm, hand);
 	}
 
-	void* MainThreadDispatcher_LateUpdate_orig;
+	HOOK_ORIG_TYPE MainThreadDispatcher_LateUpdate_orig{};
 	void MainThreadDispatcher_LateUpdate_hook(void* _this, void* method) {
 		try {
 			auto it = mainThreadTasks.begin();
@@ -1763,100 +1659,7 @@ namespace
 		catch (std::exception& ex) {
 			printf("MainThreadDispatcher Error: %s\n", ex.what());
 		}
-		return reinterpret_cast<decltype(MainThreadDispatcher_LateUpdate_hook)*>(MainThreadDispatcher_LateUpdate_orig)(_this, method);
-	}
-
-	void checkAndAddCostume(int key, void* value) {
-		static auto CostumeStatus_klass = il2cpp_symbols::get_class("PRISM.Module.Networking.dll",
-			"PRISM.Module.Networking.Stub.Status", "CostumeStatus");
-		static auto HairstyleStatus_klass = il2cpp_symbols::get_class("PRISM.Module.Networking.dll",
-			"PRISM.Module.Networking.Stub.Status", "HairstyleStatus");
-		static auto AccessoryStatus_klass = il2cpp_symbols::get_class("PRISM.Module.Networking.dll",
-			"PRISM.Module.Networking.Stub.Status", "AccessoryStatus");
-		auto value_klass = il2cpp_symbols::get_class_from_instance(value);
-
-#define unlockAndAddToMap(klass, cacheMap) \
-		static auto klass##_isUnlocked_field = il2cpp_class_get_field_from_name(klass, "isUnlocked_"); \
-		il2cpp_symbols::write_field(value, klass##_isUnlocked_field, true); \
-		cacheMap.emplace(key, value)
-
-		if (value_klass == CostumeStatus_klass) {
-			// wprintf(L"dic_int_ICostumeStatus_add: this: %p, key: %d\n", _this, key);
-			unlockAndAddToMap(CostumeStatus_klass, cacheDressMap);
-		}
-		else if (value_klass == HairstyleStatus_klass) {
-			if (g_unlock_all_headwear) {
-				unlockAndAddToMap(HairstyleStatus_klass, cacheHairMap);
-			}
-		}
-		else if (value_klass == AccessoryStatus_klass) {
-			if (g_unlock_all_headwear) {
-				unlockAndAddToMap(AccessoryStatus_klass, cacheAccessoryMap);
-			}
-		}
-	}
-
-	void* dic_int_ICostumeStatus_add_orig;
-	void dic_int_ICostumeStatus_add_hook(void* _this, int key, void* value, MethodInfo* method) {  // 添加服装到缓存表(失效)
-		if ((g_unlock_all_dress || g_allow_use_tryon_costume) && confirmationingModel) checkAndAddCostume(key, value);
-		return reinterpret_cast<decltype(dic_int_ICostumeStatus_add_hook)*>(dic_int_ICostumeStatus_add_orig)(_this, key, value, method);
-	}
-
-	void checkCostumeListReply(void* _this, void* ret, const char* costumeIdFieldName) {
-		if (g_unlock_all_dress || g_allow_use_tryon_costume) {
-			static auto GetCostumeListReply_klass = il2cpp_symbols::get_class("PRISM.Module.Networking.dll",
-				"PRISM.Module.Networking.Stub.Api", "GetCostumeListReply");
-			auto this_klass = il2cpp_symbols::get_class_from_instance(_this);
-
-			if (this_klass == GetCostumeListReply_klass) {
-				void* CostumeStatus_klass = NULL;
-				FieldInfo* mstCostumeId_field;
-
-				Utils::CSListEditor retList(ret);
-				for (auto i : retList) {
-					if (CostumeStatus_klass == NULL) {
-						CostumeStatus_klass = il2cpp_symbols::get_class_from_instance(i);
-						mstCostumeId_field = il2cpp_class_get_field_from_name(CostumeStatus_klass, costumeIdFieldName);
-					}
-					const auto mstCostumeId = il2cpp_symbols::read_field<int>(i, mstCostumeId_field);
-					checkAndAddCostume(mstCostumeId, i);
-				}
-			}
-		}
-	}
-
-	void* GetCostumeListReply_get_CostumeList_orig;
-	void* GetCostumeListReply_get_CostumeList_hook(void* _this) {  // 添加服装到缓存表
-		auto ret = reinterpret_cast<decltype(GetCostumeListReply_get_CostumeList_hook)*>(GetCostumeListReply_get_CostumeList_orig)(_this);
-		checkCostumeListReply(_this, ret, "mstCostumeId_");
-		return ret;
-	}
-
-	// The first registered auto getter
-	void* GetCostumeListReply_get_HairstyleList_orig;
-	void* GetCostumeListReply_get_HairstyleList_hook(void* _this) {  // 添加服装到缓存表
-		auto ret = reinterpret_cast<decltype(GetCostumeListReply_get_HairstyleList_hook)*>(GetCostumeListReply_get_HairstyleList_orig)(_this);
-		checkCostumeListReply(_this, ret, "mstHairstyleId_");
-		return ret;
-	}
-
-	void* GetCostumeListReply_get_AccessoryList_orig;
-	void* GetCostumeListReply_get_AccessoryList_hook(void* _this) {  // 添加服装到缓存表
-		auto ret = reinterpret_cast<decltype(GetCostumeListReply_get_AccessoryList_hook)*>(GetCostumeListReply_get_AccessoryList_orig)(_this);
-		checkCostumeListReply(_this, ret, "mstAccessoryId_");
-		return ret;
-	}
-
-	void* LiveMVUnitConfirmationModel_ctor_orig;
-	void LiveMVUnitConfirmationModel_ctor_hook(void* _this, void* musicData, void* saveData, void* unitListReply, void* costumeService) {
-		confirmationingModel = true;
-		cacheDressMap.clear();
-		cacheHairMap.clear();
-		cacheAccessoryMap.clear();
-
-		reinterpret_cast<decltype(LiveMVUnitConfirmationModel_ctor_hook)*>(LiveMVUnitConfirmationModel_ctor_orig)(_this, musicData, saveData, unitListReply, costumeService);
-		confirmationingModel = false;
-		return;
+		return MainThreadDispatcher_LateUpdate_orig.call(_this, method);
 	}
 
 	void updateSwayStringPoint(void* _this) {
@@ -1923,7 +1726,7 @@ namespace
 			});
 	}
 
-	void* SwayString_SetupPoint_orig;
+	HOOK_ORIG_TYPE SwayString_SetupPoint_orig{};
 	void SwayString_SetupPoint_hook(void* _this) {
 		if (g_enable_chara_param_edit) {
 			static auto SwayString_klass = il2cpp_symbols::get_class("PRISM.Legacy.dll", "PRISM", "SwayString");
@@ -1932,22 +1735,22 @@ namespace
 				updateSwayStringPoint(_this);
 			}
 		}
-		reinterpret_cast<decltype(SwayString_SetupPoint_hook)*>(SwayString_SetupPoint_orig)(_this);
+		SwayString_SetupPoint_orig.call(_this);
 	}
 
-	void* LiveMVUnit_GetMemberChangeRequestData_orig;
+	HOOK_ORIG_TYPE LiveMVUnit_GetMemberChangeRequestData_orig{};
 	void* LiveMVUnit_GetMemberChangeRequestData_hook(void* _this, int position, void* idol, int exchangePosition) {
 		if (g_allow_same_idol) {  // 此方法已过时
 			exchangePosition = -1;
 		}
-		return reinterpret_cast<decltype(LiveMVUnit_GetMemberChangeRequestData_hook)*>(LiveMVUnit_GetMemberChangeRequestData_orig)(_this, position, idol, exchangePosition);
+		return LiveMVUnit_GetMemberChangeRequestData_orig.call<void*>(_this, position, idol, exchangePosition);
 	}
 
 	int slotNewCount = 0;
 	bool settingLiveIdolSlot = false;
 	void* lastIdol = NULL;
 
-	void* MvUnitSlotGenerator_NewMvUnitSlot_orig;
+	HOOK_ORIG_TYPE MvUnitSlotGenerator_NewMvUnitSlot_orig{};
 	void* MvUnitSlotGenerator_NewMvUnitSlot_hook(int slot, void* idol, void* method) {
 		if (g_allow_same_idol && settingLiveIdolSlot) {
 			if (slotNewCount >= 1) {
@@ -1959,7 +1762,7 @@ namespace
 				lastIdol = idol;
 			}
 		}
-		return reinterpret_cast<decltype(MvUnitSlotGenerator_NewMvUnitSlot_hook)*>(MvUnitSlotGenerator_NewMvUnitSlot_orig)(slot, idol, method);
+		return MvUnitSlotGenerator_NewMvUnitSlot_orig.call<void*>(slot, idol, method);
 	}
 
 	bool checkMusicDataSatisfy(void* _this, void* unit, int pos = -1) {
@@ -2012,56 +1815,55 @@ namespace
 		return ret;
 	}
 
-	void* CheckVocalSeparatedSatisfy_orig;
+	HOOK_ORIG_TYPE CheckVocalSeparatedSatisfy_orig{};
 	bool CheckVocalSeparatedSatisfy_hook(void* _this, void* unit, void* mtd) {
 		if (!g_allow_same_idol) {
-			return reinterpret_cast<decltype(CheckVocalSeparatedSatisfy_hook)*>(CheckVocalSeparatedSatisfy_orig)(
+			return CheckVocalSeparatedSatisfy_orig.call<bool>(
 				_this, unit, mtd);
 		}
 
 		return checkMusicDataSatisfy(_this, unit);
 	}
 
-	void* CheckLimitedVocalSeparatedSatisfy_2_orig;
+	HOOK_ORIG_TYPE CheckLimitedVocalSeparatedSatisfy_2_orig{};
 	bool CheckLimitedVocalSeparatedSatisfy_2_hook(void* _this, void* unit, int pos, void* mtd) {
 		if (!g_allow_same_idol) {
-			return reinterpret_cast<decltype(CheckLimitedVocalSeparatedSatisfy_2_hook)*>(CheckLimitedVocalSeparatedSatisfy_2_orig)(
+			return CheckLimitedVocalSeparatedSatisfy_2_orig.call<bool>(
 				_this, unit, pos, mtd);
 		}
 		// printf("CheckLimitedVocalSeparatedSatisfy: %d\n", pos);
 		return checkMusicDataSatisfy(_this, unit, pos);
 	}
 
-	void* LiveMVUnitMemberChangePresenter_initializeAsync_b_4_MoveNext_orig;
+	HOOK_ORIG_TYPE LiveMVUnitMemberChangePresenter_initializeAsync_b_4_MoveNext_orig{};
 	void LiveMVUnitMemberChangePresenter_initializeAsync_b_4_MoveNext_hook(void* _this, MethodInfo* method) {
 		slotNewCount = 0;
 		settingLiveIdolSlot = true;
 
-		reinterpret_cast<decltype(LiveMVUnitMemberChangePresenter_initializeAsync_b_4_MoveNext_hook)*>
-			(LiveMVUnitMemberChangePresenter_initializeAsync_b_4_MoveNext_orig)(_this, method);
+		LiveMVUnitMemberChangePresenter_initializeAsync_b_4_MoveNext_orig.call(_this, method);
 
 		slotNewCount = 0;
 		settingLiveIdolSlot = false;
 	}
 
-	void* CriWareErrorHandler_HandleMessage_orig;
+	HOOK_ORIG_TYPE CriWareErrorHandler_HandleMessage_orig{};
 	void CriWareErrorHandler_HandleMessage_hook(void* _this, Il2CppString* msg) {
 		// wprintf(L"CriWareErrorHandler_HandleMessage: %ls\n%ls\n\n", msg->start_char, environment_get_stacktrace()->start_char);
 		environment_get_stacktrace();
-		return reinterpret_cast<decltype(CriWareErrorHandler_HandleMessage_hook)*>(CriWareErrorHandler_HandleMessage_orig)(_this, msg);
+		return CriWareErrorHandler_HandleMessage_orig.call(_this, msg);
 	}
 
-	void* UnsafeLoadBytesFromKey_orig;
+	HOOK_ORIG_TYPE UnsafeLoadBytesFromKey_orig{};
 	void* UnsafeLoadBytesFromKey_hook(void* _this, Il2CppString* tagName, Il2CppString* assetKey) {
-		auto ret = reinterpret_cast<decltype(UnsafeLoadBytesFromKey_hook)*>(UnsafeLoadBytesFromKey_orig)(_this, tagName, assetKey);
+		auto ret = UnsafeLoadBytesFromKey_orig.call<void*>(_this, tagName, assetKey);
 		// wprintf(L"UnsafeLoadBytesFromKey: tag: %ls, assetKey: %ls\n", tagName->start_char, assetKey->start_char);
 		// dumpByteArray(tagName->start_char, assetKey->start_char, ret);
 		return ret;
 	}
 
-	void* TextLog_AddLog_orig;
+	HOOK_ORIG_TYPE TextLog_AddLog_orig{};
 	void TextLog_AddLog_hook(void* _this, int speakerFlag, Il2CppString* textID, Il2CppString* text, bool isChoice) {
-		return reinterpret_cast<decltype(TextLog_AddLog_hook)*>(TextLog_AddLog_orig)(_this, speakerFlag, textID, text, isChoice);
+		return TextLog_AddLog_orig.call(_this, speakerFlag, textID, text, isChoice);
 
 		static auto TextLog_klass = il2cpp_symbols::get_class_from_instance(_this);
 		static auto dicConvertID_field = il2cpp_class_get_field_from_name(TextLog_klass, "dicConvertID");
@@ -2094,14 +1896,14 @@ namespace
 	void* baseCameraTransform = nullptr;
 	void* baseCamera = nullptr;
 
-	void* Unity_set_position_orig;
+	HOOK_ORIG_TYPE Unity_set_position_orig{};
 	void Unity_set_position_hook(void* _this, Vector3_t value) {
-		return reinterpret_cast<decltype(Unity_set_position_hook)*>(Unity_set_position_orig)(_this, value);
+		return Unity_set_position_orig.call(_this, value);
 	}
 
-	void* Unity_get_position_orig;
+	HOOK_ORIG_TYPE Unity_get_position_orig{};
 	Vector3_t Unity_get_position_hook(void* _this) {
-		auto data = reinterpret_cast<decltype(Unity_get_position_hook)*>(Unity_get_position_orig)(_this);
+		auto data = Unity_get_position_orig.call<Vector3_t>(_this);
 
 		if (_this == baseCameraTransform) {
 			if (guiStarting) {
@@ -2118,13 +1920,13 @@ namespace
 		return data;
 	}
 
-	void* Unity_set_fieldOfView_orig;
+	HOOK_ORIG_TYPE Unity_set_fieldOfView_orig{};
 	void Unity_set_fieldOfView_hook(void* _this, float single) {
-		return reinterpret_cast<decltype(Unity_set_fieldOfView_hook)*>(Unity_set_fieldOfView_orig)(_this, single);
+		return Unity_set_fieldOfView_orig.call(_this, single);
 	}
-	void* Unity_get_fieldOfView_orig;
+	HOOK_ORIG_TYPE Unity_get_fieldOfView_orig{};
 	float Unity_get_fieldOfView_hook(void* _this) {
-		const auto origFov = reinterpret_cast<decltype(Unity_get_fieldOfView_hook)*>(Unity_get_fieldOfView_orig)(_this);
+		const auto origFov = Unity_get_fieldOfView_orig.call<float>(_this);
 		if (_this == baseCamera) {
 			if (guiStarting) {
 				SCGUIData::sysCamFov = origFov;
@@ -2139,7 +1941,7 @@ namespace
 		return origFov;
 	}
 
-	void* Unity_InternalLookAt_orig;
+	HOOK_ORIG_TYPE Unity_InternalLookAt_orig{};
 	void Unity_InternalLookAt_hook(void* _this, Vector3_t worldPosition, Vector3_t worldUp) {
 		if (_this == baseCameraTransform) {
 			if (g_enable_free_camera) {
@@ -2149,22 +1951,22 @@ namespace
 				worldPosition.z = pos.z;
 			}
 		}
-		return reinterpret_cast<decltype(Unity_InternalLookAt_hook)*>(Unity_InternalLookAt_orig)(_this, worldPosition, worldUp);
+		return Unity_InternalLookAt_orig.call(_this, worldPosition, worldUp);
 	}
 
-	void* Unity_set_nearClipPlane_orig;
+	HOOK_ORIG_TYPE Unity_set_nearClipPlane_orig{};
 	void Unity_set_nearClipPlane_hook(void* _this, float single) {
 		if (_this == baseCamera) {
 			if (g_enable_free_camera && g_reenable_clipPlane) {
 				single = 0.001f;
 			}
 		}
-		return reinterpret_cast<decltype(Unity_set_nearClipPlane_hook)*>(Unity_set_nearClipPlane_orig)(_this, single);
+		return Unity_set_nearClipPlane_orig.call(_this, single);
 	}
 
-	void* Unity_get_nearClipPlane_orig;
+	HOOK_ORIG_TYPE Unity_get_nearClipPlane_orig{};
 	float Unity_get_nearClipPlane_hook(void* _this) {
-		auto ret = reinterpret_cast<decltype(Unity_get_nearClipPlane_hook)*>(Unity_get_nearClipPlane_orig)(_this);
+		auto ret = Unity_get_nearClipPlane_orig.call<float>(_this);
 		if (_this == baseCamera) {
 			if (g_enable_free_camera && g_reenable_clipPlane) {
 				ret = 0.001f;
@@ -2172,9 +1974,9 @@ namespace
 		}
 		return ret;
 	}
-	void* Unity_get_farClipPlane_orig;
+	HOOK_ORIG_TYPE Unity_get_farClipPlane_orig{};
 	float Unity_get_farClipPlane_hook(void* _this) {
-		auto ret = reinterpret_cast<decltype(Unity_get_farClipPlane_hook)*>(Unity_get_farClipPlane_orig)(_this);
+		auto ret = Unity_get_farClipPlane_orig.call<float>(_this);
 		if (_this == baseCamera) {
 			if (g_enable_free_camera && g_reenable_clipPlane) {
 				ret = 2500.0f;
@@ -2183,23 +1985,23 @@ namespace
 		return ret;
 	}
 
-	void* Unity_set_farClipPlane_orig;
+	HOOK_ORIG_TYPE Unity_set_farClipPlane_orig{};
 	void Unity_set_farClipPlane_hook(void* _this, float value) {
 		if (_this == baseCamera) {
 			if (g_enable_free_camera && g_reenable_clipPlane) {
 				value = 2500.0f;
 			}
 		}
-		reinterpret_cast<decltype(Unity_set_farClipPlane_hook)*>(Unity_set_farClipPlane_orig)(_this, value);
+		Unity_set_farClipPlane_orig.call(_this, value);
 	}
 
-	void* Unity_set_rotation_orig;
+	HOOK_ORIG_TYPE Unity_set_rotation_orig{};
 	void Unity_set_rotation_hook(void* _this, Quaternion_t value) {
-		return reinterpret_cast<decltype(Unity_set_rotation_hook)*>(Unity_set_rotation_orig)(_this, value);
+		return Unity_set_rotation_orig.call(_this, value);
 	}
-	void* Unity_get_rotation_orig;
+	HOOK_ORIG_TYPE Unity_get_rotation_orig{};
 	Quaternion_t Unity_get_rotation_hook(void* _this) {
-		auto ret = reinterpret_cast<decltype(Unity_get_rotation_hook)*>(Unity_get_rotation_orig)(_this);
+		auto ret = Unity_get_rotation_orig.call<Quaternion_t>(_this);
 
 		if (_this == baseCameraTransform) {
 			if (guiStarting) {
@@ -2230,10 +2032,10 @@ namespace
 	}
 
 
-	void* get_baseCamera_orig;
+	HOOK_ORIG_TYPE get_baseCamera_orig{};
 	void* get_baseCamera_hook(void* _this) {
 		// printf("get_baseCamera\n");
-		auto ret = reinterpret_cast<decltype(get_baseCamera_hook)*>(get_baseCamera_orig)(_this);  // UnityEngine.Camera
+		auto ret = get_baseCamera_orig.call<void*>(_this);  // UnityEngine.Camera
 
 		// always save the camera as users may enable the gui option after the init
 		static auto GetComponent = reinterpret_cast<void* (*)(void*, Il2CppReflectionType*)>(
@@ -2254,7 +2056,7 @@ namespace
 
 	void readDMMGameGuardData();
 
-	void* GGIregualDetector_ShowPopup_orig;
+	HOOK_ORIG_TYPE GGIregualDetector_ShowPopup_orig{};
 	void GGIregualDetector_ShowPopup_hook(void* _this, int code) {
 		static auto End = reinterpret_cast<void (*)(void*)>(
 			il2cpp_symbols::get_method_pointer(
@@ -2277,27 +2079,27 @@ namespace
 			// if (code == 0) return;
 		}
 
-		return reinterpret_cast<decltype(GGIregualDetector_ShowPopup_hook)*>(GGIregualDetector_ShowPopup_orig)(_this, code);
+		return GGIregualDetector_ShowPopup_orig.call(_this, code);
 	}
 
-	void* DMMGameGuard_NPGameMonCallback_orig;
+	HOOK_ORIG_TYPE DMMGameGuard_NPGameMonCallback_orig{};
 	int DMMGameGuard_NPGameMonCallback_hook(UINT dwMsg, UINT dwArg) {
 		// printf("DMMGameGuard_NPGameMonCallback: dwMsg: %u, dwArg: %u\n%ls\n\n", dwMsg, dwArg, environment_get_stacktrace()->start_char);
 		return 1;
 		// return reinterpret_cast<decltype(DMMGameGuard_NPGameMonCallback_hook)*>(DMMGameGuard_NPGameMonCallback_orig)(dwMsg, dwArg);
 	}
 
-	void* set_vsync_count_orig;
+	HOOK_ORIG_TYPE set_vsync_count_orig{};
 	void set_vsync_count_hook(int value) {
-		return reinterpret_cast<decltype(set_vsync_count_hook)*>(set_vsync_count_orig)(g_vsync_count == -1 ? value : g_vsync_count);
+		return set_vsync_count_orig.call(g_vsync_count == -1 ? value : g_vsync_count);
 	}
 
-	void* set_fps_orig;
+	HOOK_ORIG_TYPE set_fps_orig{};
 	void set_fps_hook(int value) {
-		return reinterpret_cast<decltype(set_fps_hook)*>(set_fps_orig)(g_max_fps == -1 ? value : g_max_fps);
+		return set_fps_orig.call(g_max_fps == -1 ? value : g_max_fps);
 	}
 
-	void* Unity_Quit_orig;
+	HOOK_ORIG_TYPE Unity_Quit_orig{};
 	void Unity_Quit_hook(int code) {
 		printf("Quit code: %d\n", code);
 		TerminateProcess(GetCurrentProcess(), 0);
@@ -2305,47 +2107,47 @@ namespace
 		// return reinterpret_cast<decltype(Unity_Quit_hook)*>(Unity_Quit_orig)(code);
 	}
 
-	void* SetCallbackToGameMon_orig;
+	HOOK_ORIG_TYPE SetCallbackToGameMon_orig{};
 	int SetCallbackToGameMon_hook(void* DMMGameGuard_NPGameMonCallback_addr) {
 		// printf("SetCallbackToGameMon: %p\n%ls\n\n", DMMGameGuard_NPGameMonCallback_addr, environment_get_stacktrace()->start_char);
 		ADD_HOOK(DMMGameGuard_NPGameMonCallback, "DMMGameGuard_NPGameMonCallback at %p");
-		return reinterpret_cast<decltype(SetCallbackToGameMon_hook)*>(SetCallbackToGameMon_orig)(DMMGameGuard_NPGameMonCallback_addr);
+		return SetCallbackToGameMon_orig.call<int>(DMMGameGuard_NPGameMonCallback_addr);
 	}
 
-	void* DMMGameGuard_Setup_orig;
+	HOOK_ORIG_TYPE DMMGameGuard_Setup_orig{};
 	void DMMGameGuard_Setup_hook() {
 		// printf("\n\nDMMGameGuard_Setup\n\n");
 		readDMMGameGuardData();
 	}
 
-	void* DMMGameGuard_SetCheckMode_orig;
+	HOOK_ORIG_TYPE DMMGameGuard_SetCheckMode_orig{};
 	void DMMGameGuard_SetCheckMode_hook(bool isCheck) {
 		// printf("DMMGameGuard_SetCheckMode before\n");
 		// readDMMGameGuardData();
-		reinterpret_cast<decltype(DMMGameGuard_SetCheckMode_hook)*>(DMMGameGuard_SetCheckMode_orig)(isCheck);
+		DMMGameGuard_SetCheckMode_orig.call(isCheck);
 		// printf("DMMGameGuard_SetCheckMode after\n");
 		// readDMMGameGuardData();
 	}
 
-	void* PreInitNPGameMonW_orig;
+	HOOK_ORIG_TYPE PreInitNPGameMonW_orig{};
 	void PreInitNPGameMonW_hook(int64_t v) {
 		// printf("PreInitNPGameMonW\n");
 		// readDMMGameGuardData();
 	}
-	void* PreInitNPGameMonA_orig;
+	HOOK_ORIG_TYPE PreInitNPGameMonA_orig{};
 	void PreInitNPGameMonA_hook(int64_t v) {
 		// printf("PreInitNPGameMonA\n");
 		// readDMMGameGuardData();
 	}
 
-	void* InitNPGameMon_orig;
+	HOOK_ORIG_TYPE InitNPGameMon_orig{};
 	UINT InitNPGameMon_hook() {
 		// printf("InitNPGameMon\n");
 		// readDMMGameGuardData();
 		return 1877;
 	}
 
-	void* SetHwndToGameMon_orig;
+	HOOK_ORIG_TYPE SetHwndToGameMon_orig{};
 	void SetHwndToGameMon_hook(int64_t v) {
 		// printf("SetHwndToGameMon\n");
 		// readDMMGameGuardData();
@@ -2589,11 +2391,6 @@ namespace
 			"LiveCostumeChangeView", "_setIdolCostume", 3
 		);
 
-		LiveCostumeChangeModel_get_Idol = reinterpret_cast<decltype(LiveCostumeChangeModel_get_Idol)>(il2cpp_symbols::get_method_pointer(
-			"PRISM.Adapters.dll", "PRISM.Adapters",
-			"LiveCostumeChangeModel", "get_Idol", 0
-		));
-
 		auto LiveCostumeChangeModel_GetDress_addr = il2cpp_symbols::get_method_pointer(
 			"PRISM.Adapters.dll", "PRISM.Adapters",
 			"LiveCostumeChangeModel", "GetDress", 1
@@ -2776,17 +2573,9 @@ namespace
 		// ADD_HOOK(Live_Update, "Live_Update at %p");
 		ADD_HOOK(LiveCostumeChangeView_setTryOnMode, "LiveCostumeChangeView_setTryOnMode at %p");
 		ADD_HOOK(LiveCostumeChangeView_setIdolCostume, "LiveCostumeChangeView_setIdolCostume at %p");
-		ADD_HOOK(LiveCostumeChangeModel_GetDress, "LiveCostumeChangeModel_GetDress at %p");
-		ADD_HOOK(LiveCostumeChangeModel_GetHairstyle, "LiveCostumeChangeModel_GetHairstyle at %p");
-		ADD_HOOK(LiveCostumeChangeModel_GetAccessory, "LiveCostumeChangeModel_GetAccessory at %p");
 		ADD_HOOK(LiveCostumeChangeModel_ctor, "LiveCostumeChangeModel_ctor at %p");
 		ADD_HOOK(AssembleCharacter_ApplyParam, "AssembleCharacter_ApplyParam at %p");
 		ADD_HOOK(MainThreadDispatcher_LateUpdate, "MainThreadDispatcher_LateUpdate at %p");
-		ADD_HOOK(dic_int_ICostumeStatus_add, "dic_int_ICostumeStatus_add at %p");
-		ADD_HOOK(GetCostumeListReply_get_CostumeList, "GetCostumeListReply_get_CostumeList at %p");
-		ADD_HOOK(GetCostumeListReply_get_HairstyleList, "GetCostumeListReply_get_HairstyleList at %p");
-		ADD_HOOK(GetCostumeListReply_get_AccessoryList, "GetCostumeListReply_get_AccessoryList at %p");
-		ADD_HOOK(LiveMVUnitConfirmationModel_ctor, "LiveMVUnitConfirmationModel_ctor at %p");
 		ADD_HOOK(SwayString_SetupPoint, "SwayString_SetupPoint at %p");
 		ADD_HOOK(LiveMVUnit_GetMemberChangeRequestData, "LiveMVUnit_GetMemberChangeRequestData at %p");
 		ADD_HOOK(LiveMVUnitMemberChangePresenter_initializeAsync_b_4_MoveNext, "LiveMVUnitMemberChangePresenter_initializeAsync_b_4_MoveNext at %p");

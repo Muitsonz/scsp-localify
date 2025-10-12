@@ -1,8 +1,9 @@
 #include "imgui/imgui.h"
 #include "stdinclude.hpp"
 #include "scgui/scGUIData.hpp"
+#include <safetyhook.hpp>
 
-extern void* SetResolution_orig;
+extern SafetyInlineHook SetResolution_orig;
 // extern std::vector<std::pair<std::pair<int, int>, int>> replaceDressResIds;
 extern std::map<std::string, CharaParam_t> charaParam;
 extern CharaParam_t baseParam;
@@ -301,7 +302,7 @@ namespace SCGUILoop {
 					ImGui::Checkbox("Full Screen", &SCGUIData::screenFull);
 					if (ImGui::Button("Update Resolution")) {
 						if (SetResolution_orig) {
-							reinterpret_cast<void (*)(int, int, bool)>(SetResolution_orig)(SCGUIData::screenW, SCGUIData::screenH, SCGUIData::screenFull);
+							SetResolution_orig.call(SCGUIData::screenW, SCGUIData::screenH, SCGUIData::screenFull);
 						}
 
 					}

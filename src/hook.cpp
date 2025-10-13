@@ -39,6 +39,7 @@ LONG WINAPI seh_filter(EXCEPTION_POINTERS* ep) {
 
 	return EXCEPTION_EXECUTE_HANDLER;
 }
+#define __EXCEPT(context) __except (seh_filter(GetExceptionInformation())) { printf("SEH exception detected in '" #context "'.\n"); }
 
 //using namespace std;
 
@@ -166,21 +167,48 @@ void convertPtrType(T* cvtTarget, TF func_ptr) {
 //	printf(_fmt_##" (%s, %s)\n", _name_##_offset, MH_StatusToString(_name_##stat1), MH_StatusToString(_name_##stat2)); 
 //#define HOOK_ORIG_TYPE void*
 #pragma endregion
+void PrintTargetFunctionHeader(void* target) {
+	__try {
+		std::cout << "[MEM] 0x" << target << ": ";
+		auto* p = static_cast<unsigned char*>(target);
+		for (size_t i = 0; i < 16; ++i)
+			std::cout << std::uppercase << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(p[i]) << ' ';
+		std::cout << '\n';
+	}
+	__EXCEPT(PrintTargetFunctionHeader);
+	std::cout << std::dec;
+}
 void AddSafetyHook(const char* orig_name, void* orig, void* hook, SafetyHookInline& result) {
+	if (orig == nullptr || hook == nullptr) {
+		std::cout << "[ERROR] orig or hook is nullptr for \"" << orig_name << "\"" << std::endl;
+		return;
+	}
+	auto delta = ((int64_t)hook - (int64_t)orig);
 	try {
-		auto h = safetyhook::create_inline(orig, hook); // may throw
-		if (!h) {
-			std::cout << "[ERROR] Failed to create hook for \"" << orig_name << "\"(" << orig << "): returned nullptr" << std::endl;
+		auto value = safetyhook::InlineHook::create(orig, hook);
+		if (value) {
+			result = std::move(value.value());
+			std::cout << "Hook created for \"" << orig_name << "\" " << orig << "->" << hook << "(dis=" << delta << ")" << std::endl;
+		}
+		else {
+			auto err = value.error();
+			std::cout << "[ERROR] Failed to create hook for \"" << orig_name << "\" " << orig << "->" << hook << "(dis=" << delta << "): ";
+			if (err.type == safetyhook::InlineHook::Error::BAD_ALLOCATION) {
+				std::cout << "BAD_ALLOCATION (" << (uint8_t)err.allocator_error << ")";
+			}
+			else {
+				std::cout << std::to_string(err.type) << "(" << ((void*)err.ip) << ")";
+			}
+			std::cout << std::endl;
 			return;
 		}
-		result = std::move(h);
-		std::cout << "Hook created for \"" << orig_name << "\"(" << orig << ")" << std::endl;
+		PrintTargetFunctionHeader(orig);
 	}
 	catch (const std::exception& e) {
-		std::cout << "[ERROR] Failed to create hook for \"" << orig_name << "\"(" << orig << "): " << e.what() << std::endl;
+		std::cout << "[ERROR] Failed to create hook for \"" << orig_name << "\" " << orig << "->" << hook << "(dis=" << delta << "): " << e.what() << std::endl;
 	}
 	catch (...) {
-		std::cout << "[ERROR] Failed to create hook for \"" << orig_name << "\"(" << orig << "): unknown exception" << std::endl;
+		std::cout << "[ERROR] Failed to create hook for \"" << orig_name << "\" " << orig << "->" << hook << "(dis=" << delta << "): unknown exception" << std::endl;
 	}
 }
 #define ADD_HOOK(_name_, _nothing_) AddSafetyHook(#_name_, (void*)_name_##_addr, (void*)_name_##_hook, _name_##_orig);
@@ -1168,7 +1196,7 @@ namespace
 		//if(value) value = il2cpp_symbols::NewWStr(std::format(L"(h){}", std::wstring(value->start_char)));
 		TMP_Text_set_text_orig.call(
 			_this, value
-			);
+		);
 	}
 
 	bool get_NeedsLocalization_func(void* instanceUITextMeshProUGUI) {

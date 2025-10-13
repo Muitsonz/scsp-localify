@@ -167,9 +167,9 @@ void convertPtrType(T* cvtTarget, TF func_ptr) {
 //	printf(_fmt_##" (%s, %s)\n", _name_##_offset, MH_StatusToString(_name_##stat1), MH_StatusToString(_name_##stat2)); 
 //#define HOOK_ORIG_TYPE void*
 #pragma endregion
-void PrintTargetFunctionHeader(void* target) {
+void PrintTargetFunctionHeader(const char* desp, void* target) {
 	__try {
-		std::cout << "[MEM] 0x" << target << ": ";
+		std::cout << "[MEM] 0x" << target << "(" << desp << ")" << ": ";
 		auto* p = static_cast<unsigned char*>(target);
 		for (size_t i = 0; i < 16; ++i)
 			std::cout << std::uppercase << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(p[i]) << ' ';
@@ -185,6 +185,7 @@ void AddSafetyHook(const char* orig_name, void* orig, void* hook, SafetyHookInli
 	}
 	auto delta = ((int64_t)hook - (int64_t)orig);
 	try {
+		PrintTargetFunctionHeader("before", orig);
 		auto value = safetyhook::InlineHook::create(orig, hook);
 		if (value) {
 			result = std::move(value.value());
@@ -200,9 +201,8 @@ void AddSafetyHook(const char* orig_name, void* orig, void* hook, SafetyHookInli
 				std::cout << std::to_string(err.type) << "(" << ((void*)err.ip) << ")";
 			}
 			std::cout << std::endl;
-			return;
 		}
-		PrintTargetFunctionHeader(orig);
+		PrintTargetFunctionHeader("after", orig);
 	}
 	catch (const std::exception& e) {
 		std::cout << "[ERROR] Failed to create hook for \"" << orig_name << "\" " << orig << "->" << hook << "(dis=" << delta << "): " << e.what() << std::endl;

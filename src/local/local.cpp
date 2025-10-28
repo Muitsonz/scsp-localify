@@ -89,10 +89,12 @@ namespace SCLocal {
 	除非了解游戏文件结构，否则不要修改这几个的值 (不排除还有其他的)
 	*/
 	bool getLocalifyText(const std::wstring& category, int id, std::wstring* getStr) {
-		const auto categoryS = utility::conversions::to_utf8string(category);
+		//const auto categoryS = utility::conversions::to_utf8string(category);
+		const auto categoryS = il2cpp_symbols::Utf16ToUtf8(category);
 		std::string resultS = "";
 		if (getLocalifyText(categoryS, id, &resultS)) {
-			const auto resultWs = utility::conversions::to_utf16string(resultS);
+			//const auto resultWs = utility::conversions::to_utf16string(resultS);
+			const auto resultWs = il2cpp_symbols::Utf8ToUtf16(resultS);
 			*getStr = resultWs;
 			return true;
 		}
@@ -190,7 +192,8 @@ namespace SCLocal {
 
 	std::string getLyricsTrans(const std::wstring& orig) {
 		// const auto lrcStr = replaceAll(replaceAll(utility::conversions::to_utf8string(orig), "\n", "\\n"), "\r", "\\r");
-		const auto lrcStr = utility::conversions::to_utf8string(orig);
+		//const auto lrcStr = utility::conversions::to_utf8string(orig);
+		const auto lrcStr = il2cpp_symbols::Utf16ToUtf8(orig);
 		if (auto iter = lrcTrans.find(lrcStr); iter != lrcTrans.end()) {
 			return iter->second;
 		}
@@ -204,7 +207,8 @@ namespace SCLocal {
 
 	bool getGameUnlocalTrans(const std::wstring& orig, std::string* newStr) {
 		// const auto origStr = replaceAll(replaceAll(utility::conversions::to_utf8string(orig), "\n", "\\n"), "\r", "\\r");
-		const auto origStr = utility::conversions::to_utf8string(orig);
+		//const auto origStr = utility::conversions::to_utf8string(orig);
+		const auto origStr = il2cpp_symbols::Utf16ToUtf8(orig);
 		if (auto iter = unLocalTrans.find(origStr); iter != unLocalTrans.end()) {
 			*newStr = iter->second;
 			return true;

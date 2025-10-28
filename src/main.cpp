@@ -7,19 +7,14 @@
 #include <charconv>
 #include <cassert>
 #include <format>
-#include <cpprest/uri.h>
-#include <cpprest/http_listener.h>
 #include <ranges>
 #include <mhotkey.hpp>
+#include <mutex>
+#include <condition_variable>
 
 extern bool init_hook();
 extern void uninit_hook();
 extern void start_console();
-
-using namespace web;
-using namespace http;
-using namespace utility;
-using namespace http::experimental::listener;
 
 
 bool g_enable_plugin = true;

@@ -37,9 +37,6 @@
 #include "reflection.hpp"
 
 #include <nlohmann/json.hpp>
-#include <cpprest/uri.h>
-#include <cpprest/http_listener.h>
-#include <cpprest/http_client.h>
 #include <string>
 
 #include "local/local.hpp"

@@ -2,6 +2,8 @@ dependencies = {
     basePath = "./deps"
 }
 
+defines { "MSGPACK_NO_BOOST" }
+
 function dependencies.load()
     dir = path.join(dependencies.basePath, "premake/*.lua")
     deps = os.matchfiles(dir)

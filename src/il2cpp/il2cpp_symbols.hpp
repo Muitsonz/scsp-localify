@@ -414,6 +414,8 @@ namespace il2cpp_symbols
 	uintptr_t find_method(const char* assemblyName, const char* namespaze,
 		const char* klassName, std::function<bool(const MethodInfo*)> predict);
 
+	MethodInfo* find_method(void* klass, std::function<bool(const MethodInfo*)> predict);
+
 	FieldInfo* get_field(const char* assemblyName, const char* namespaze,
 		const char* klassName, const char* name);
 
@@ -490,6 +492,9 @@ namespace il2cpp_symbols
 	void* array_get_value(void* array, int index);
 
 	void array_set_value(void* array, void* value, int index);
+
+	std::wstring Utf8ToUtf16(std::string utf8Str);
+	std::string Utf16ToUtf8(std::wstring utf16Str);
 }
 
 namespace il2cpp_symbols_logged {

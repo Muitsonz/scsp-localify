@@ -174,6 +174,18 @@ namespace il2cpp_symbols
 		return 0;
 	}
 
+	MethodInfo* find_method(void* klass, std::function<bool(const MethodInfo*)> predict)
+	{
+		void* iter = nullptr;
+		while (const MethodInfo* method = il2cpp_class_get_methods(klass, &iter))
+		{
+			if (predict(method))
+				return (MethodInfo*)method;
+		}
+
+		return 0;
+	}
+
 	FieldInfo* get_field(const char* assemblyName, const char* namespaze,
 		const char* klassName, const char* name)
 	{
@@ -221,6 +233,44 @@ namespace il2cpp_symbols
 		static auto mtd_Array_SetValue = il2cpp_class_get_method_from_name(klass_System_Array, "SetValue", 2);
 		static auto func_Array_SetValue = reinterpret_cast<void* (*)(void* _this, void* value, int index, void* mtd)>(mtd_Array_SetValue->methodPointer);
 		func_Array_SetValue(array, value, index, mtd_Array_SetValue);
+	}
+
+	std::wstring Utf8ToUtf16(std::string utf8Str) {
+		static auto func_Encoding_getUTF8 = reinterpret_cast<Il2CppObject * (*)()>(
+			il2cpp_symbols_logged::get_method_pointer(
+				"mscorlib.dll", "System.Text", "Encoding", "get_UTF8", 0
+			));
+		auto utf8 = func_Encoding_getUTF8();
+		auto klass_utf8 = il2cpp_object_get_class(utf8);
+		auto method_GetString = il2cpp_class_get_method_from_name(klass_utf8, "GetString", 2);
+		auto func_GetString = reinterpret_cast<Il2CppString * (*)(const char* bytes, int32_t byteCount)>(method_GetString->methodPointer);
+		auto str = func_GetString(utf8Str.data(), utf8Str.size());
+		return std::wstring(str->start_char, str->length);
+	}
+
+	std::string Utf16ToUtf8(std::wstring utf16Str) {
+		static auto func_Encoding_getUTF8 = reinterpret_cast<Il2CppObject * (*)()>(
+			il2cpp_symbols_logged::get_method_pointer(
+				"mscorlib.dll", "System.Text", "Encoding", "get_UTF8", 0
+			));
+		auto utf8 = func_Encoding_getUTF8();
+		auto klass_utf8 = il2cpp_object_get_class(utf8);
+		auto method_GetBytes = il2cpp_symbols::find_method(
+			klass_utf8,
+			[](const MethodInfo* mi) {
+				if (strcmp(il2cpp_method_get_name(mi), "GetBytes"))
+					return false;
+				auto param = il2cpp_method_get_param(mi, 0);
+				return 0 == strcmp(il2cpp_class_get_name(param), "String");
+			});
+		auto func_GetBytes = reinterpret_cast<Il2CppObject * (*)(Il2CppString*)>(method_GetBytes->methodPointer);
+		auto managedString = il2cpp_string_new_utf16(utf16Str.data(), utf16Str.size());
+		auto managedArray = func_GetBytes(managedString);
+		auto length = il2cpp_array_length(managedArray);
+		char* managedArrayAddr = il2cpp_array_addr_with_size(managedArray, 1, 0);
+		const char* nativeCopy = new char[length];
+		std::memcpy((void*)nativeCopy, (const void*)managedArrayAddr, length);
+		return std::string(nativeCopy, length);
 	}
 }
 

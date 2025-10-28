@@ -7,8 +7,6 @@
 #include "scgui/scGUIData.hpp"
 #include <scgui/scGUIMain.hpp>
 #include <mhotkey.hpp>
-#include <cpprest/http_client.h>
-#include <cpprest/filestream.h>
 
 #define PRINT(var) std::cout << #var << " = " << var << std::endl;
 
@@ -566,7 +564,7 @@ namespace
 		}
 		const auto dumpLocalFilePath = dumpBasePath / SCLocal::getFilePathByName(dumpName, true, dumpBasePath);
 		std::ofstream dumpFile(dumpLocalFilePath, std::ofstream::out);
-		dumpFile << utility::conversions::to_utf8string(writeWstr).c_str();
+		dumpFile << il2cpp_symbols::Utf16ToUtf8(writeWstr).c_str();
 		printf("dump %ls success. (%ls)\n", dumpName.c_str(), dumpLocalFilePath.c_str());
 	}
 
@@ -576,7 +574,7 @@ namespace
 		int dumpedCount = 0;
 		printf("dumping: %s\n", sid.c_str());
 		while (true) {
-			const auto dumpName = std::format(L"{}_{:02}.json", utility::conversions::to_utf16string(sid), i);
+			const auto dumpName = std::format(L"{}_{:02}.json", il2cpp_symbols::Utf8ToUtf16(sid), i);
 			const auto dumpNameIl = il2cpp_symbols::NewWStr(dumpName);
 			if (!DataFile_IsKeyExist(dumpNameIl)) {
 				// printf("%ls - continue.\n", dumpName.c_str());
@@ -606,7 +604,7 @@ namespace
 		}
 		auto searchNameStr = il2cpp_string_new(searchName.c_str());
 		if (!DataFile_IsKeyExist(searchNameStr)) return false;
-		fmtAndDumpJsonBytesData(utility::conversions::to_string_t(searchName));
+		fmtAndDumpJsonBytesData(il2cpp_symbols::Utf8ToUtf16(searchName));
 		return true;
 	}
 
@@ -625,28 +623,7 @@ namespace
 
 	}
 
-	int dumpScenarioFromCatalog();
-
 	std::string localizationDataCache("{}");
-	int dumpAllScenarioData() {
-		try {
-			return dumpScenarioFromCatalog();
-		}
-		catch (std::exception& e) {
-			printf("dumpScenarioFromCatalog error: %s\n", e.what());
-		}
-		// 下方方法已过时
-		int totalCount = 0;
-		const auto titleData = nlohmann::json::parse(localizationDataCache);
-		for (auto& it : titleData.items()) {
-			const auto& key = it.key();
-			const std::string_view keyView(key);
-			if (keyView.starts_with("mlADVInfo_Title")) {
-				totalCount += dumpScenarioDataById(key.substr(16));
-			}
-		}
-		return totalCount;
-	}
 
 	bool guiStarting = false;
 	void startSCGUI() {
@@ -686,13 +663,13 @@ namespace
 			std::filesystem::create_directories(dumpBasePath);
 		}
 		std::ofstream file(dumpBasePath / "localify.json", std::ofstream::out);
-		const auto writeStr = utility::conversions::to_utf8string(jsonWStr);
+		const auto writeStr = il2cpp_symbols::Utf16ToUtf8(jsonWStr);
 		localizationDataCache = writeStr;
 		file << writeStr.c_str();
 		file.close();
 		printf("write done.\n");
 
-		const auto dumpCount = dumpAllScenarioData();
+		const auto dumpCount = 0; // dumpAllScenarioData();
 		printf("Dump finished. Total %d files\n", dumpCount);
 
 		return;
@@ -767,7 +744,7 @@ namespace
 		if (g_vsync_count != -1) set_vsync_count_hook(g_vsync_count);
 		itLocalizationManagerDic(_this);
 		std::string resultText = "";
-		if (SCLocal::getLocalifyText(utility::conversions::to_utf8string(category->start_char), id, &resultText)) {
+		if (SCLocal::getLocalifyText(il2cpp_symbols::Utf16ToUtf8(category->start_char), id, &resultText)) {
 			//updateDicText(_this, category, id, resultText);
 			return il2cpp_string_new(resultText.c_str());
 		}
@@ -843,7 +820,7 @@ namespace
 
 		unsigned char info[5120]{};
 
-		//const auto cvString = utility::conversions::to_utf8string(encodedInfo);
+		//const auto cvString = il2cpp_symbols::Utf16ToUtf8(encodedInfo);
 		//boost::beast::detail::base64::decode(&info, cvString.c_str(), cvString.size());
 		auto managedEncodedInfo = il2cpp_string_new_utf16(encodedInfo.data(), (uint32_t)encodedInfo.size());
 
@@ -887,42 +864,6 @@ namespace
 		return CatalogManifest_FromValues(LabelCrc, Size, Checksum, Seed);
 	}
 
-
-	void* checkAndDownloadFile(Il2CppString* fileNameStr) {
-		try {
-			const std::wstring fileName(fileNameStr->start_char);
-
-			std::filesystem::path userProfile = getenv("UserProfile");
-			std::filesystem::path filePath = userProfile / "AppData/LocalLow/BNE/imasscprism/D" / fileName.substr(0, 2) / fileName;
-			if (std::filesystem::exists(filePath)) {
-				return readFileAllBytes(filePath);
-			}
-
-			const auto url = std::format(L"https://asset.imassc.song4.prism.bn765.com/r/{}/{}", fileName.substr(0, 2), fileName);
-			web::http::client::http_client_config cfg;
-			cfg.set_timeout(utility::seconds(30));
-			web::http::client::http_client client(url, cfg);
-			auto response = client.request(web::http::methods::GET).get();
-			if (response.status_code() != 200) {
-				wprintf(L"File download failed: %ls (%d)\n", url.c_str(), response.status_code());
-				return NULL;
-			}
-
-			concurrency::streams::fstream::open_ostream(filePath.c_str()).then([=](concurrency::streams::ostream output_stream) {
-				return response.body().read_to_end(output_stream.streambuf());
-				}).then([=](size_t) {
-					wprintf(L"File downloaded successfully: %ls\n", filePath.c_str());
-					}).wait();
-
-				return readFileAllBytes(filePath);
-		}
-		catch (std::exception& e) {
-			printf("checkAndDownloadFile error: %s\n", e.what());
-			return NULL;
-		}
-
-	}
-
 	struct GameVersion {
 		std::wstring gameVersion;
 		std::wstring resourceVersion;
@@ -950,218 +891,6 @@ namespace
 		const std::wstring resVersion(get_CurrentResourceVersion(Global_get_instance())->start_char);
 
 		return GameVersion{ .gameVersion = gameVer , .resourceVersion = resVersion };
-	}
-
-	std::pair<void*, void*> getManifestFile(Il2CppString* defaultFileName) {
-		try {
-			auto defaultData = checkAndDownloadFile(defaultFileName);
-			if (defaultData != NULL) {
-				return std::make_pair(nullptr, defaultData);
-			}
-			printf("Try get fallback version...\n");
-
-			static auto CatalogManifest_FromUniqueVersion = reinterpret_cast<void* (*)(Il2CppString * uniqueVersion, Il2CppString * bundleVersion)>(
-				il2cpp_symbols::get_method_pointer("Limelight.Shared.dll", "Limelight",
-					"CatalogManifest", "FromUniqueVersion", 2)
-				);
-			static auto CatalogManifest_GetRealName = reinterpret_cast<Il2CppString * (*)(void*)>(
-				il2cpp_symbols::get_method_pointer("Limelight.Shared.dll", "Limelight",
-					"CatalogManifest", "GetRealName", 0)
-				);
-
-			const auto gameVerInfo = getGameVersions();
-			const std::wstring gameVer = gameVerInfo.gameVersion;
-			const std::wstring resVersion = gameVerInfo.resourceVersion;
-
-			const auto subPointPos = gameVer.rfind(L'.', -1);
-			if (subPointPos == std::wstring::npos) {
-				wprintf(L"Invalid game version: %ls\n", gameVer.c_str());
-				return std::make_pair(nullptr, nullptr);
-			}
-			const auto baseVersionString = gameVer.substr(0, subPointPos + 1);
-			auto subVersion = std::stoi(gameVer.substr(subPointPos + 1, gameVer.length()));
-
-			while (subVersion >= 0) {
-				const auto currentVersion = std::format(L"{}{}", baseVersionString, subVersion);
-				wprintf(L"Checking version: %ls\n", currentVersion.c_str());
-				auto manifest = CatalogManifest_FromUniqueVersion(il2cpp_symbols::NewWStr(resVersion), il2cpp_symbols::NewWStr(currentVersion));
-				if (manifest) {
-					auto data = checkAndDownloadFile(CatalogManifest_GetRealName(manifest));
-					if (data != NULL) {
-						return std::make_pair(manifest, data);
-					}
-				}
-				else {
-					printf("manifest is null.\n");
-				}
-				subVersion--;
-			}
-		}
-		catch (std::exception& ex) {
-			printf("getManifestFile error: %s\n", ex.what());
-		}
-		printf("Get manifest file failed.\n");
-		return std::make_pair(nullptr, nullptr);
-	}
-
-
-	int dumpScenarioFromCatalog() {
-		static auto string_op_Implicit = reinterpret_cast<void* (*)(void* retstr, Il2CppString*)>(
-			il2cpp_symbols::get_method_pointer("mscorlib.dll", "System",
-				"String", "op_Implicit", 1)
-			);
-
-		static auto ReadOnlySpan_char_klass = il2cpp_symbols::get_system_class_from_reflection_type_str(
-			"System.ReadOnlySpan`1[System.Char]");
-
-		static auto HashUtils_Crc64 = reinterpret_cast<UINT64(*)(void*, UINT64)>(
-			il2cpp_symbols::get_method_pointer("Limelight.Shared.dll", "Limelight",
-				"HashUtils", "Crc64", 2)
-			);
-
-		static auto CatalogManifest_GetRealName = reinterpret_cast<Il2CppString * (*)(void*)>(
-			il2cpp_symbols::get_method_pointer("Limelight.Shared.dll", "Limelight",
-				"CatalogManifest", "GetRealName", 0)
-			);
-
-		static auto CatalogBinaryParser_ParseEncoded = reinterpret_cast<void* (*)(void* manifest, void* input)>(
-			il2cpp_symbols::get_method_pointer("Limelight.Shared.dll", "Limelight",
-				"CatalogBinaryParser", "ParseEncoded", 2)
-			);
-
-		static auto CatalogBinary_get_Entries = reinterpret_cast<void* (*)(void*)>(
-			il2cpp_symbols::get_method_pointer("Limelight.Shared.dll", "Limelight",
-				"CatalogBinary", "get_Entries", 0)
-			);
-
-		static auto CatalogBinaryEntry_ToCatalogManifest = reinterpret_cast<void* (*)(void*)>(
-			il2cpp_symbols::get_method_pointer("Limelight.Shared.dll", "Limelight",
-				"CatalogBinaryEntry", "ToCatalogManifest", 0)
-			);
-
-		static auto CatalogBinaryEntry_get_Label = reinterpret_cast<void* (*)(void* retstr, void* _this)>(
-			il2cpp_symbols::get_method_pointer("Limelight.Shared.dll", "Limelight",
-				"CatalogBinaryEntry", "get_Label", 0)
-			);
-
-		static auto CatalogManifest_FromUniqueVersion = reinterpret_cast<void* (*)(Il2CppString * uniqueVersion, Il2CppString * bundleVersion)>(
-			il2cpp_symbols::get_method_pointer("Limelight.Shared.dll", "Limelight",
-				"CatalogManifest", "FromUniqueVersion", 2)
-			);
-
-		static auto CatalogBinaryEntry_klass = il2cpp_symbols::get_class("Limelight.Shared.dll", "Limelight", "CatalogBinaryEntry");
-		static auto Label_field = il2cpp_class_get_field_from_name(CatalogBinaryEntry_klass, "<Label>k__BackingField");
-
-		static auto Encoding_get_UTF8 = reinterpret_cast<void* (*)()>(
-			il2cpp_symbols::get_method_pointer("mscorlib.dll", "System.Text",
-				"Encoding", "get_UTF8", 0)
-			);
-
-		static auto Encoding_GetString = reinterpret_cast<Il2CppString * (*)(void*, void*, int, int)>(
-			il2cpp_symbols::get_method_pointer("mscorlib.dll", "System.Text",
-				"Encoding", "GetString", 3)
-			);
-
-		const auto gameVerInfo = getGameVersions();
-		const std::wstring gameVer = gameVerInfo.gameVersion;
-		const std::wstring resVersion = gameVerInfo.resourceVersion;
-		
-		const auto atPos = resVersion.find(L'@');
-		const auto simpleVersion = resVersion.substr(0, atPos);
-		const auto encodedInfo = resVersion.substr(atPos + 1);
-
-		auto ReadOnlySpan_char = il2cpp_object_new(ReadOnlySpan_char_klass);
-
-		const auto cmpStr = il2cpp_symbols::NewWStr(std::format(L"{}:{}", gameVer, simpleVersion));
-		const auto rootHash = HashUtils_Crc64(string_op_Implicit(ReadOnlySpan_char, cmpStr), 0);
-
-		auto manifest = FromCatalogInfo(encodedInfo, rootHash);
-		// CatalogManifest_FromUniqueVersion(il2cpp_string_new("10003400@9t5HYphlvDRn0EijwOLgfp0="), il2cpp_string_new("1.7.0"));
-		// auto manifest = CatalogManifest_FromUniqueVersion(il2cpp_symbols::NewWStr(resVersion), il2cpp_symbols::NewWStr(gameVer));
-
-		wprintf(L"manifest at %p, rootHash: %llu (%ls), resVersion: %ls\n", manifest, rootHash, cmpStr->start_char, resVersion.c_str());
-
-		auto [newManifest, encodedCatalog] = getManifestFile(CatalogManifest_GetRealName(manifest));
-		if (encodedCatalog == nullptr) {
-			printf("readCatalog failed: encodedCatalog is NULL.\n");
-			return 0;
-		}
-		if (newManifest != nullptr) {
-			manifest = newManifest;
-		}
-
-		auto catalog = CatalogBinaryParser_ParseEncoded(manifest, encodedCatalog);  // Limelight.CatalogBinary
-		int dumpCount = 0;
-
-		il2cpp_symbols::iterate_IEnumerable(CatalogBinary_get_Entries(catalog), [&dumpCount](void* entry) {
-			auto manifest2 = entryAsManifest(entry);
-			auto encodedCatalog2 = checkAndDownloadFile(CatalogManifest_GetRealName(manifest2));
-			if (encodedCatalog2 == NULL) {
-				printf("encodedCatalog2 failed: encodedCatalog is NULL.\n");
-				return;
-			}
-			auto catalog2 = CatalogBinaryParser_ParseEncoded(manifest2, encodedCatalog2);  // Limelight.CatalogBinary
-
-			il2cpp_symbols::iterate_IEnumerable(CatalogBinary_get_Entries(catalog2), [&dumpCount](void* info) {
-				static auto toJsonStr = reinterpret_cast<Il2CppString * (*)(void*)>(
-					il2cpp_symbols::get_method_pointer("Newtonsoft.Json.dll", "Newtonsoft.Json",
-						"JsonConvert", "SerializeObject", 1)
-					);
-
-				/*
-				wprintf(L"label:\n%ls\n\n", toJsonStr(info)->start_char);
-				static auto ArraySegment_Byte_klass = il2cpp_symbols::get_system_class_from_reflection_type_str(
-					"System.ArraySegment`1[System.Byte]");
-				auto label = il2cpp_object_new(ArraySegment_Byte_klass);  // System.ArraySegment`1<unsigned int8>
-
-				label = CatalogBinaryEntry_get_Label(label, info);  // System.ArraySegment`1<unsigned int8>
-				*/
-
-				auto label = il2cpp_field_get_value_object(Label_field, info);
-
-				const std::wstring labelArrayStr(toJsonStr(label)->start_char);
-				auto labelArray = nlohmann::json::parse(labelArrayStr);
-				std::string labelStr;
-				for (auto& i : labelArray) {
-					int l = i;
-					labelStr += (char)l;
-				}
-
-				static std::regex pattern("^s\\d+_\\d+_\\d+$");
-
-				if (std::regex_match(labelStr, pattern)) {
-					// printf("labelStr: %s\n", labelStr.c_str());
-					if (dumpScenarioDataByJsonFileName(labelStr)) {
-						dumpCount++;
-					}
-				}
-
-				/*
-				static auto ArraySegment_Byte_klass = il2cpp_symbols::get_class_from_instance(label);
-
-				static auto ArraySegment_get_Array = reinterpret_cast<void* (*)(void*)>(
-					il2cpp_class_get_method_from_name(ArraySegment_Byte_klass, "get_Array", 0)->methodPointer
-					);
-				static auto ArraySegment_get_Offset = reinterpret_cast<int (*)(void*)>(
-					il2cpp_class_get_method_from_name(ArraySegment_Byte_klass, "get_Offset", 0)->methodPointer
-					);
-				static auto ArraySegment_get_Count = reinterpret_cast<int (*)(void*)>(
-					il2cpp_class_get_method_from_name(ArraySegment_Byte_klass, "get_Count", 0)->methodPointer
-					);
-
-				auto labelStrArray = ArraySegment_get_Array(label);
-				auto labelStrOffset = ArraySegment_get_Offset(label);
-				auto labelStrCount = ArraySegment_get_Count(label);
-
-
-				wprintf(L"labelStrOffset: %d, labelStrCount: %d\n", labelStrOffset, labelStrCount);
-				auto labelStr = Encoding_GetString(Encoding_get_UTF8(), labelStrArray, labelStrOffset, labelStrCount);
-
-				wprintf(L"labelStr: %ls\n", labelStr->start_char);*/
-				});
-
-			});
-		return dumpCount;
 	}
 
 	HOOK_ORIG_TYPE LiveMVOverlayView_UpdateLyrics_orig;
@@ -1334,7 +1063,7 @@ namespace
 					pos = writeWstr.find(searchStr, pos + replaceStr.length());
 				}
 
-				fileDump << utility::conversions::to_utf8string(writeWstr).c_str();
+				fileDump << il2cpp_symbols::Utf16ToUtf8(writeWstr).c_str();
 				fileDump.close();
 				printf("Auto dump: %ls\n", fileName.c_str());
 			}
@@ -1760,7 +1489,7 @@ namespace
 				)
 				);
 			const auto objNameIlStr = get_ObjectName(mdl);
-			const std::string objName = objNameIlStr ? utility::conversions::to_utf8string(std::wstring(objNameIlStr->start_char)) : std::format("Unnamed Obj {:p}", mdl);
+			const std::string objName = objNameIlStr ? il2cpp_symbols::Utf16ToUtf8(std::wstring(objNameIlStr->start_char)) : std::format("Unnamed Obj {:p}", mdl);
 			std::string showObjName;
 			if (objName.starts_with("m_ALL_")) {
 				const auto nextFlagPos = objName.find_first_of(L'_', 6);

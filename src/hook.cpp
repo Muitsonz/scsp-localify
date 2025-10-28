@@ -9,7 +9,6 @@
 #include <mhotkey.hpp>
 #include <cpprest/http_client.h>
 #include <cpprest/filestream.h>
-#include <boost/beast/core/detail/base64.hpp>
 
 #define PRINT(var) std::cout << #var << " = " << var << std::endl;
 
@@ -842,9 +841,21 @@ namespace
 				"CatalogManifest", "FromValues", 4)
 			);
 
-		unsigned char info[5120];
-		const auto cvString = utility::conversions::to_utf8string(encodedInfo);
-		boost::beast::detail::base64::decode(&info, cvString.c_str(), cvString.size());
+		unsigned char info[5120]{};
+
+		//const auto cvString = utility::conversions::to_utf8string(encodedInfo);
+		//boost::beast::detail::base64::decode(&info, cvString.c_str(), cvString.size());
+		auto managedEncodedInfo = il2cpp_string_new_utf16(encodedInfo.data(), (uint32_t)encodedInfo.size());
+
+		static auto Convert_FromBase64String = reinterpret_cast<void* (*)(Il2CppString * s)>(
+			il2cpp_symbols_logged::get_method_pointer(
+				"mscorlib.dll", "System", "Convert", "FromBase64String", 1
+			));
+
+		auto managedDecodedInfo = Convert_FromBase64String(managedEncodedInfo);
+		auto length = il2cpp_array_length(managedDecodedInfo);
+		char* managedArrayAddr = il2cpp_array_addr_with_size(managedDecodedInfo, 1, 0);
+		std::memcpy(info, reinterpret_cast<const unsigned char*>(managedArrayAddr), length);
 
 		SpanReader reader(info, sizeof(info));
 
@@ -1054,7 +1065,7 @@ namespace
 		const auto gameVerInfo = getGameVersions();
 		const std::wstring gameVer = gameVerInfo.gameVersion;
 		const std::wstring resVersion = gameVerInfo.resourceVersion;
-
+		
 		const auto atPos = resVersion.find(L'@');
 		const auto simpleVersion = resVersion.substr(0, atPos);
 		const auto encodedInfo = resVersion.substr(atPos + 1);

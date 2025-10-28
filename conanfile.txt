@@ -1,5 +1,4 @@
 [requires]
-boost/1.83.0
 cpprestsdk/2.10.18
 minizip/1.2.11
 zlib/1.2.12

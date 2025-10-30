@@ -57,6 +57,11 @@
 #endif
 
 
+#define PRINT(var) std::cout << #var << " = " << var << std::endl;
+LONG WINAPI seh_filter(EXCEPTION_POINTERS* ep);
+#define __EXCEPT(strContext) __except (seh_filter(GetExceptionInformation())) { std::cout << "SEH exception detected in '" << strContext << "'.\n"; }
+
+
 class CharaParam_t {
 public:
 	CharaParam_t(float height, float bust, float head, float arm, float hand) :
@@ -235,6 +240,8 @@ extern int g_start_resolution_w;
 extern int g_start_resolution_h;
 extern bool g_start_resolution_fullScreen;
 extern bool g_reenable_clipPlane;
+extern bool g_dev_loadasset_output;
+extern bool g_dev_loadasset_extract;
 
 namespace tools {
 	extern bool output_networking_calls;

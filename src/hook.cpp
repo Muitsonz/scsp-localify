@@ -758,9 +758,10 @@ namespace
 		return ret;
 	}
 
+	std::unordered_set<std::string> dumpedTextureNames{};
 
 	// reference: https://github.com/Kimjio/imas-sc-prism-localify
-	void DumpTexture2D(Il2CppObject* texture, std::string type)
+	void DumpTexture2D(Il2CppObject* texture, std::string type, int* shaderTextureId = nullptr)
 	{
 		if (texture == nullptr) return;
 
@@ -774,6 +775,14 @@ namespace
 			"UnityEngine.CoreModule.dll", "UnityEngine",
 			"Object", "get_name", 0);
 		auto textureName = reflection::Invoke<Il2CppString*>(method_UnityObject_getname, texture, nullptr, "DumpTexture2D|Object::get_name");
+
+		std::string strTextureName = reflection::helper::ToUtf8(textureName);
+		if (shaderTextureId != nullptr) {
+			strTextureName = strTextureName + "@tid=" + std::to_string(*shaderTextureId);
+		}
+		if (dumpedTextureNames.contains(strTextureName)) {
+			return;
+		}
 
 		auto method_getwidth = il2cpp_class_get_method_from_name(texture->klass, "get_width", 0);
 		auto method_getheight = il2cpp_class_get_method_from_name(texture->klass, "get_height", 0);
@@ -859,25 +868,19 @@ namespace
 			reflection::Invoke(method_Directory_CreateDirectory, nullptr, &mstr, "DumpTexture2D|Directory::CreateDirectory");
 		}
 
-		std::string strTextureName = reflection::helper::ToUtf8(textureName);
-		std::string saveFilePath;
-		Il2CppObject* args_File_WriteAllBytes[2]{ nullptr, pngData };
-		if (strTextureName.find(".png") == std::string::npos)
-		{
-			args_File_WriteAllBytes[0] = (Il2CppObject*)il2cpp_string_new(
-				(saveFilePath = "TextureDump/" + type + "/" + strTextureName + ".png").c_str()
-			);
-		}
-		else
-		{
-			args_File_WriteAllBytes[0] = (Il2CppObject*)il2cpp_string_new(
-				(saveFilePath = "TextureDump/" + type + "/" + strTextureName).c_str()
-			);
+		// File.WriteAllBytes(saveFilePath, pngData);
+		std::string saveFilePath = "TextureDump/" + type + "/" + strTextureName;
+		if (strTextureName.find(".png") == std::string::npos) {
+			saveFilePath += ".png";
 		}
 
-		// File.WriteAllBytes(saveFilePath, pngData);
+		Il2CppObject* args_File_WriteAllBytes[2]{
+			(Il2CppObject*)il2cpp_string_new(saveFilePath.c_str()),
+			pngData
+		};
 		std::cout << "[DumpTexture2D] " << saveFilePath << std::endl;
 		reflection::Invoke(method_File_WriteAllBytes, nullptr, args_File_WriteAllBytes, "DumpTexture2D|File::WriteAllBytes");
+		dumpedTextureNames.emplace(strTextureName);
 	}
 
 	void DumpSprite(Il2CppObject* sprite, std::string sourceType) {
@@ -885,6 +888,41 @@ namespace
 		auto method_gettexture = il2cpp_class_get_method_from_name(sprite->klass, "get_texture", 0);
 		auto texture = reflection::Invoke(method_gettexture, sprite, nullptr, "DumpSprite|Sprite::get_texture");
 		DumpTexture2D(texture, sourceType);
+	}
+
+	std::map<std::string, std::vector<int>> shaderPropIds{};
+
+	void DumpMaterial(Il2CppObject* material, std::string sourceType) {
+		if (material == nullptr) return;
+
+		static auto method_Material_GetTextureImpl = il2cpp_symbols_logged::get_method("UnityEngine.CoreModule.dll", "UnityEngine", "Material", "GetTextureImpl", 1);
+		static auto method_Material_getshader = il2cpp_symbols_logged::get_method("UnityEngine.CoreModule.dll", "UnityEngine", "Material", "get_shader", 0);
+		auto shader = reflection::Invoke(method_Material_getshader, material, nullptr, "DumpMaterial|Material::get_shader");
+		static auto method_Material_getname = il2cpp_symbols_logged::get_method("UnityEngine.CoreModule.dll", "UnityEngine", "Material", "get_name", 0);
+		auto managedShaderName = reflection::Invoke<Il2CppString*>(method_Material_getname, shader, nullptr, "DumpMaterial|Object::get_name");
+		auto shaderName = reflection::helper::ToUtf8(managedShaderName);
+		auto it = shaderPropIds.find(shaderName);
+		if (it == shaderPropIds.end()) {
+			printf("[WARNING] Shader '%s' is unknown. Performing quick detecting... (8192)\n", shaderName.c_str());
+			std::vector<int> propIds{};
+			for (int i = 0; i < 8192; ++i) {
+				auto pi = &i;
+				auto t = reflection::Invoke(method_Material_GetTextureImpl, material, (Il2CppObject**)&pi, "DumpMaterial|Material::GetTextureImpl");
+				if (t != nullptr) {
+					propIds.push_back(i);
+					printf("TextureId found at %i\n", i);
+				}
+			}
+			shaderPropIds.emplace(shaderName, propIds);
+			it = shaderPropIds.find(shaderName);
+		}
+		if (it != shaderPropIds.end()) {
+			for (int id : it->second) {
+				auto pi = &id;
+				auto texture = reflection::Invoke(method_Material_GetTextureImpl, material, (Il2CppObject**)&pi, "DumpMaterial|Material::GetTextureImpl");
+				DumpTexture2D(texture, sourceType);
+			}
+		}
 	}
 
 	void ExtractAsset(Il2CppObject* obj, Il2CppString* name) {
@@ -898,6 +936,17 @@ namespace
 			auto texture = reflection::Invoke(method_gettexture, obj, nullptr, "ExtractAsset|RawImage::get_texture");
 			DumpTexture2D(texture, "RawImage");
 		}
+		else if (0 == strcmp(obj->klass->name, "MeshRenderer")) {
+			static auto method_Renderer_getsharedMaterial = il2cpp_symbols_logged::get_method("UnityEngine.CoreModule.dll", "UnityEngine", "Renderer", "get_sharedMaterial", 0);
+			static auto method_Renderer_getsharedMaterials = il2cpp_symbols_logged::get_method("UnityEngine.CoreModule.dll", "UnityEngine", "Renderer", "get_sharedMaterials", 0);
+
+			auto sharedMaterials = reflection::Invoke(method_Renderer_getsharedMaterials, obj, nullptr, "ExtractAsset|Renderer::get_sharedMaterials");
+			auto length = il2cpp_array_length(sharedMaterials);
+			for (uint32_t i = 0; i < length; ++i) {
+				auto material = (Il2CppObject*)il2cpp_symbols::array_get_value(sharedMaterials, i);
+				DumpMaterial(material, "MeshRenderer");
+			}
+		}
 		else if (0 == strcmp(obj->klass->name, "Sprite")) {
 			DumpSprite(obj, "Sprite");
 		}
@@ -908,11 +957,6 @@ namespace
 
 	void ExtractAssetsGameObject(Il2CppObject* obj, Il2CppString* name) {
 		if (!obj) return;
-
-		std::wstring wsName(name->start_char, name->length);
-		std::cout << "[ExtractAssets] ";
-		std::wcout << wsName;
-		std::cout << ": " << obj->klass->name << std::endl;
 
 		if (0 == strcmp(obj->klass->name, "GameObject")) {
 			static auto method_GameObject_GetComponentsInternal = il2cpp_symbols::get_method(

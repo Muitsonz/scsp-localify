@@ -51,7 +51,7 @@ int g_start_resolution_w = -1;
 int g_start_resolution_h = -1;
 bool g_start_resolution_fullScreen = false;
 bool g_reenable_clipPlane = false;
-bool g_dev_loadasset_output = true;
+bool g_dev_loadasset_output = false;
 bool g_dev_loadasset_extract = true;
 
 std::filesystem::path g_localify_base("scsp_localify");

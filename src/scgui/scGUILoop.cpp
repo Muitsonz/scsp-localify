@@ -345,6 +345,7 @@ namespace SCGUILoop {
 #endif
 				ImGui::Checkbox("LoadAsset|Output", &g_dev_loadasset_output);
 				ImGui::Checkbox("LoadAsset|Extract", &g_dev_loadasset_extract);
+				ImGui::Checkbox("LoadAsset|Quick probing for shaders", &g_dev_shader_quickprobing);
 			}
 
 		}

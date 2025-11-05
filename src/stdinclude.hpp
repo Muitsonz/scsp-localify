@@ -242,6 +242,7 @@ extern bool g_start_resolution_fullScreen;
 extern bool g_reenable_clipPlane;
 extern bool g_dev_loadasset_output;
 extern bool g_dev_loadasset_extract;
+extern bool g_dev_shader_quickprobing;
 
 namespace tools {
 	extern bool output_networking_calls;

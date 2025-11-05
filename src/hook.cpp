@@ -10,6 +10,9 @@
 #include <cpprest/http_client.h>
 #include <cpprest/filestream.h>
 #include <boost/beast/core/detail/base64.hpp>
+#include <rapidjson/document.h>
+#include <rapidjson/writer.h>
+#include <rapidjson/filewritestream.h>
 
 //using namespace std;
 
@@ -759,10 +762,132 @@ namespace
 	}
 
 	std::unordered_set<std::string> dumpedTextureNames{};
+	std::map<std::string, std::vector<int>> shaderPropIds{};
+
+	void PrintProgressBar(uint32_t i, bool withLeadingReturn) {
+		if (withLeadingReturn) printf("\r");
+		float percent = i / (float)UINT32_MAX * 100.f;
+		int charCount = (int)(percent / 10);
+		printf("[");
+		for (int c = 0; c < charCount; ++c) { printf("="); }
+		for (int c = charCount; c < 10; ++c) { printf(" "); }
+		printf("] %.4f%% (%u)", percent, i);
+	}
+
+	void SaveShaderTextureIds(const std::string& shaderName, const std::vector<int>& propIds) {
+		if (!std::filesystem::exists(g_localify_base)) {
+			std::cerr << "[ERROR] Failed to save shader data. (root data directory \"" << g_localify_base << "\" doesn't exist)" << std::endl;
+			return;
+		}
+
+		auto filepath = g_localify_base / "shaders";
+		if (!std::filesystem::exists(filepath)) {
+			if (!std::filesystem::create_directory(filepath)) {
+				std::cerr << "[ERROR] Failed to save shader data. (failed to create data directory)" << std::endl;
+				return;
+			}
+		}
+		filepath /= shaderName;
+
+		rapidjson::Document doc;
+		doc.SetArray();
+		auto& allocator = doc.GetAllocator();
+		for (int id : propIds) {
+			doc.PushBack(id, allocator);
+		}
+
+		rapidjson::StringBuffer buffer;
+		rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+		doc.Accept(writer);
+
+		std::ofstream ofs(filepath);
+		if (!ofs.is_open()) {
+			std::cerr << "[ERROR] Failed to save shader data. (failed to open the file " << filepath << std::endl;
+			return;
+		}
+		ofs << buffer.GetString();
+		if (!ofs) {
+			std::cerr << "[ERROR] Failed to save shader data. (failed to write contents)" << "\n";
+			return;
+		}
+	}
+
+	void DetectShaderTextureIds(const std::string& shaderName, Il2CppObject* material, std::vector<int>& propIds, uint32_t upper = 0) {
+		static auto method_Material_GetTextureImpl = il2cpp_symbols_logged::get_method("UnityEngine.CoreModule.dll", "UnityEngine", "Material", "GetTextureImpl", 1);
+		if (upper == 0) upper = UINT32_MAX;
+		auto startTime = std::chrono::steady_clock::now();
+		auto lastTime = startTime;
+		PrintProgressBar(0, false);
+		for (int i = 0; i < upper; ++i) {
+			auto now = std::chrono::steady_clock::now();
+			if (now - lastTime >= std::chrono::seconds(1)) {
+				PrintProgressBar(i, true);
+				lastTime = now;
+			}
+
+			auto pi = &i;
+			auto t = reflection::Invoke(method_Material_GetTextureImpl, material, (Il2CppObject**)&pi, "DetectShaderTextureIds|Material::GetTextureImpl");
+			if (t != nullptr) {
+				propIds.push_back(i);
+				printf("\rTextureId found at %i          \n", i);
+				PrintProgressBar(i, false);
+			}
+		}
+		PrintProgressBar(UINT32_MAX, true);
+		printf("\n");
+		if (true || upper == UINT32_MAX) {
+			SaveShaderTextureIds(shaderName, propIds);
+		}
+		else {
+			printf("[INFO] Shader data won't be saved for a quick probing.\n");
+		}
+	}
+
+	bool TryLoadShaderData(const std::string& shaderName) {
+		auto filepath = g_localify_base / "shaders" / shaderName;
+
+		if (!std::filesystem::exists(filepath)) {
+			return false;
+		}
+
+		std::ifstream ifs(filepath, std::ios::binary);
+		if (!ifs.is_open()) {
+			std::cerr << "[ERROR] Failed to open file " << filepath << std::endl;
+			return false;
+		}
+
+		std::string content;
+		content.assign((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+
+		rapidjson::Document doc;
+		doc.Parse(content.c_str());
+		if (doc.HasParseError()) {
+			std::cerr << "[ERROR] Failed to deserialize " << filepath << std::endl;
+			return false;
+		}
+
+		if (!doc.IsArray()) {
+			std::cerr << "[ERROR] Invalid shader data " << filepath << std::endl;
+			return false;
+		}
+
+		std::vector<int> propIds{};
+		for (rapidjson::SizeType i = 0; i < doc.Size(); ++i) {
+			const rapidjson::Value& v = doc[i];
+			if (!v.IsInt()) {
+				std::cerr << "[ERROR] Invalid shader data " << filepath << " (element " << i << ")" << std::endl;
+				continue;
+			}
+			int value = v.GetInt();
+			propIds.push_back(value);
+		}
+
+		shaderPropIds.insert_or_assign(shaderName, std::move(propIds));
+		return true;
+	}
 
 	// reference: https://github.com/Kimjio/imas-sc-prism-localify
-	void DumpTexture2D(Il2CppObject* texture, std::string type, int* shaderTextureId = nullptr)
-	{
+	void DumpTexture2D(Il2CppObject* texture, std::string type, int* shaderTextureId = nullptr) {
 		if (texture == nullptr) return;
 
 		static int32_t zero = 0, one = 1;
@@ -890,8 +1015,6 @@ namespace
 		DumpTexture2D(texture, sourceType);
 	}
 
-	std::map<std::string, std::vector<int>> shaderPropIds{};
-
 	void DumpMaterial(Il2CppObject* material, std::string sourceType) {
 		if (material == nullptr) return;
 
@@ -901,20 +1024,22 @@ namespace
 		static auto method_Material_getname = il2cpp_symbols_logged::get_method("UnityEngine.CoreModule.dll", "UnityEngine", "Material", "get_name", 0);
 		auto managedShaderName = reflection::Invoke<Il2CppString*>(method_Material_getname, shader, nullptr, "DumpMaterial|Object::get_name");
 		auto shaderName = reflection::helper::ToUtf8(managedShaderName);
+		std::replace(shaderName.begin(), shaderName.end(), '/', '$');
+
 		auto it = shaderPropIds.find(shaderName);
 		if (it == shaderPropIds.end()) {
-			printf("[WARNING] Shader '%s' is unknown. Performing quick detecting... (8192)\n", shaderName.c_str());
-			std::vector<int> propIds{};
-			for (int i = 0; i < 8192; ++i) {
-				auto pi = &i;
-				auto t = reflection::Invoke(method_Material_GetTextureImpl, material, (Il2CppObject**)&pi, "DumpMaterial|Material::GetTextureImpl");
-				if (t != nullptr) {
-					propIds.push_back(i);
-					printf("TextureId found at %i\n", i);
-				}
+			if (TryLoadShaderData(shaderName)) {
+				printf("Shader data '%s' is loaded from local file.\n", shaderName.c_str());
+				it = shaderPropIds.find(shaderName);
 			}
-			shaderPropIds.emplace(shaderName, propIds);
-			it = shaderPropIds.find(shaderName);
+			if (it == shaderPropIds.end()) {
+				std::vector<int> propIds{};
+				uint32_t upper = g_dev_shader_quickprobing ? 8192 : 0;
+				printf("Detecting shader '%s'... (%i)\n", shaderName.c_str(), upper);
+				DetectShaderTextureIds(shaderName, material, propIds, upper);
+				shaderPropIds.emplace(shaderName, propIds);
+				it = shaderPropIds.find(shaderName);
+			}
 		}
 		if (it != shaderPropIds.end()) {
 			for (int id : it->second) {

@@ -46,6 +46,7 @@ std::map<int, std::string> swayTypes{
 std::map<int, UnitIdol> savedCostumes{};
 UnitIdol lastSavedCostume;
 UnitIdol overridenMvUnitIdols[8];
+std::map<std::string, std::string> replacementTexureNames{};
 
 
 void loadGUIDataCache() {
@@ -761,12 +762,54 @@ namespace
 		return ret;
 	}
 
+	static const char* UnityShaderUsualPropertyNames[] = {
+		"_MainTex",
+		"_BaseMap",
+		"_Color",
+		"_BaseColor",
+		"_TintColor",
+		"_MainTex_ST",
+		"_NormalMap",
+		"_BumpMap",
+		"_Metallic",
+		"_Glossiness",
+		"_Smoothness",
+		"_SpecColor",
+		"_SpecularColor",
+		"_EmissionColor",
+		"_EmissionMap",
+		"_OcclusionMap",
+		"_HeightMap",
+		"_ParallaxMap",
+		"_Cutoff",
+		"_AlphaClipThreshold",
+		"_DetailAlbedoMap",
+		"_DetailNormalMap",
+		"_RimColor",
+		"_RimPower",
+		"_EmissionScaleUI",
+		"_GlossMapScale",
+		"_Time",
+		"_SinTime",
+		"_CosTime"
+	};
+	static std::vector<int> UnityShaderUsualPropertyNameIds{};
+
 	std::unordered_set<std::string> dumpedTextureNames{};
 	std::map<std::string, std::vector<int>> shaderPropIds{};
 
-	void PrintProgressBar(uint32_t i, bool withLeadingReturn) {
+	Il2CppObject* CreateNewTexure2D(int width, int height) {
+		static auto klass_Texture2D = il2cpp_symbols::get_class("UnityEngine.CoreModule.dll", "UnityEngine", "Texture2D");
+		static auto ctor_Texture2D_2 = il2cpp_class_get_method_from_name(klass_Texture2D, ".ctor", 2);
+		auto tex = (Il2CppObject*)il2cpp_object_new(klass_Texture2D);
+		void* args_ctor_Texture2D_2[2]{ &width, &height };
+		reflection::Invoke(ctor_Texture2D_2, tex, (Il2CppObject**)args_ctor_Texture2D_2, "DumpTexture2D|new Texture2D");
+		return tex;
+	}
+
+	void PrintProgressBar(uint32_t i, uint32_t upper, bool withLeadingReturn) {
 		if (withLeadingReturn) printf("\r");
-		float percent = i / (float)UINT32_MAX * 100.f;
+		float percent = i / (float)upper * 100.f;
 		int charCount = (int)(percent / 10);
 		printf("[");
 		for (int c = 0; c < charCount; ++c) { printf("="); }
@@ -780,7 +823,7 @@ namespace
 			return;
 		}
 
-		auto filepath = g_localify_base / "shaders";
+		auto filepath = g_localify_base / "shaderdata";
 		if (!std::filesystem::exists(filepath)) {
 			if (!std::filesystem::create_directory(filepath)) {
 				std::cerr << "[ERROR] Failed to save shader data. (failed to create data directory)" << std::endl;
@@ -813,15 +856,28 @@ namespace
 	}
 
 	void DetectShaderTextureIds(const std::string& shaderName, Il2CppObject* material, std::vector<int>& propIds, uint32_t upper = 0) {
+		static auto method_Material_PropertyToID = il2cpp_symbols_logged::get_method("UnityEngine.CoreModule.dll", "UnityEngine", "Shader", "PropertyToID", 1);
+		if (UnityShaderUsualPropertyNameIds.size() == 0) {
+			auto length = sizeof(UnityShaderUsualPropertyNames) / sizeof(UnityShaderUsualPropertyNames[0]);
+			for (int i = 0; i < length; ++i) {
+				auto name = (Il2CppObject*)il2cpp_string_new(UnityShaderUsualPropertyNames[i]);
+				auto boxed = reflection::Invoke(method_Material_PropertyToID, nullptr, &name, "DetectShaderTextureIds|Material::PropertyToID");
+				auto id = il2cpp_symbols::unbox<int>(boxed);
+				UnityShaderUsualPropertyNameIds.push_back(id);
+			}
+		}
+
 		static auto method_Material_GetTextureImpl = il2cpp_symbols_logged::get_method("UnityEngine.CoreModule.dll", "UnityEngine", "Material", "GetTextureImpl", 1);
 		if (upper == 0) upper = UINT32_MAX;
 		auto startTime = std::chrono::steady_clock::now();
 		auto lastTime = startTime;
-		PrintProgressBar(0, false);
-		for (int i = 0; i < upper; ++i) {
+		PrintProgressBar(0, upper, false);
+		int i = 0;
+	LOOP_START:
+		for (; i <= upper; ++i) {
 			auto now = std::chrono::steady_clock::now();
 			if (now - lastTime >= std::chrono::seconds(1)) {
-				PrintProgressBar(i, true);
+				PrintProgressBar(i, upper, true);
 				lastTime = now;
 			}
 
@@ -830,12 +886,23 @@ namespace
 			if (t != nullptr) {
 				propIds.push_back(i);
 				printf("\rTextureId found at %i          \n", i);
-				PrintProgressBar(i, false);
 			}
 		}
-		PrintProgressBar(UINT32_MAX, true);
+		if (upper < UINT32_MAX) {
+			for (int knownId : UnityShaderUsualPropertyNameIds) {
+				if (knownId > upper) {
+					auto pi = &knownId;
+					auto t = reflection::Invoke(method_Material_GetTextureImpl, material, (Il2CppObject**)&pi, "DetectShaderTextureIds|Material::GetTextureImpl");
+					if (t != nullptr) {
+						propIds.push_back(i);
+						printf("\rTextureId found at %i          \n", i);
+					}
+				}
+			}
+		}
+		PrintProgressBar(upper, upper, true);
 		printf("\n");
-		if (true || upper == UINT32_MAX) {
+		if (upper == UINT32_MAX) {
 			SaveShaderTextureIds(shaderName, propIds);
 		}
 		else {
@@ -886,9 +953,51 @@ namespace
 		return true;
 	}
 
+	void LoadReplacementTextures() {
+		const auto filepath = g_localify_base / "textures";
+		if (!std::filesystem::exists(filepath))
+			return;
+		for (const auto& entry : std::filesystem::directory_iterator(filepath	)) {
+			if (entry.is_regular_file()) {
+				std::filesystem::path filePath = entry.path();
+				std::string stem = filePath.stem().string();
+				std::string name = filePath.filename().string();
+				replacementTexureNames[stem] = name;
+			}
+		}
+	}
+
+	void ReplaceMaterialTexture(Il2CppObject* meterial, int width, int height, std::string texName, int texId) {
+		static auto method_File_ReadAllBytes = il2cpp_symbols_logged::get_method_corlib(
+			"System.IO", "File", "ReadAllBytes", 1
+		);
+		static auto method_ImageConversion_LoadImage_2 = il2cpp_symbols_logged::get_method(
+			"UnityEngine.ImageConversionModule.dll", "UnityEngine", "ImageConversion", "LoadImage", 2
+		);
+		static auto method_Material_SetTextureImpl = il2cpp_symbols_logged::get_method(
+			"UnityEngine.CoreModule.dll", "UnityEngine", "Material", "SetTextureImpl", 2
+		);
+
+		auto it = replacementTexureNames.find(texName);
+		if (it != replacementTexureNames.end()) {
+			auto replacementFilepath = g_localify_base / "textures" / it->second;
+			if (std::filesystem::exists(replacementFilepath)) {
+				auto tex = CreateNewTexure2D(width, height);
+				auto managedFilepath = (Il2CppObject*)il2cpp_string_new(replacementFilepath.string().c_str());
+				auto bytes = reflection::Invoke(method_File_ReadAllBytes, nullptr, &managedFilepath, "LoadReplacementTexture|File::ReadAllBytes");
+				Il2CppObject* args_ImageConversion_LoadImage_2[2]{ tex, bytes };
+				reflection::InvokeVoid(method_ImageConversion_LoadImage_2, nullptr, args_ImageConversion_LoadImage_2, "LoadReplacementTexture|ImageConversion::LoadImage");
+				Il2CppObject* args_Material_SetTextureImpl[2]{ (Il2CppObject*)(&texId), tex };
+				reflection::InvokeVoid(method_Material_SetTextureImpl, meterial, args_Material_SetTextureImpl, "LoadReplacementTexture|Material::SetTextureImpl");
+				printf("Texture '%s' is replaced.\n", texName.c_str());
+			}
+		}
+	}
+
 	// reference: https://github.com/Kimjio/imas-sc-prism-localify
-	void DumpTexture2D(Il2CppObject* texture, std::string type, int* shaderTextureId = nullptr) {
-		if (texture == nullptr) return;
+	// returns: name of the texture
+	std::string DumpTexture2D(Il2CppObject* texture, std::string type, int* pOutWidth = nullptr, int* pOutHeight = nullptr) {
+		if (texture == nullptr) return "";
 
 		static int32_t zero = 0, one = 1;
 		static auto klass_Int32 = il2cpp_symbols_logged::get_class_corlib("System", "Int32");
@@ -902,11 +1011,8 @@ namespace
 		auto textureName = reflection::Invoke<Il2CppString*>(method_UnityObject_getname, texture, nullptr, "DumpTexture2D|Object::get_name");
 
 		std::string strTextureName = reflection::helper::ToUtf8(textureName);
-		if (shaderTextureId != nullptr) {
-			strTextureName = strTextureName + "@tid=" + std::to_string(*shaderTextureId);
-		}
 		if (dumpedTextureNames.contains(strTextureName)) {
-			return;
+			return strTextureName;
 		}
 
 		auto method_getwidth = il2cpp_class_get_method_from_name(texture->klass, "get_width", 0);
@@ -916,8 +1022,15 @@ namespace
 		auto width = il2cpp_symbols::unbox<int>(managedWidth);
 		auto height = il2cpp_symbols::unbox<int>(managedHeight);
 
+		if (pOutWidth != nullptr) {
+			*pOutWidth = width;
+		}
+		if (pOutHeight != nullptr) {
+			*pOutHeight = height;
+		}
+
 		// var renderTexture = RenderTexture.GetTemporary(width, height, 0, 0, 1);
-		static auto method_RenderTexture_GetTemporary_5 = il2cpp_symbols::get_method(
+		static auto method_RenderTexture_GetTemporary_5 = il2cpp_symbols_logged::get_method(
 			"UnityEngine.CoreModule.dll", "UnityEngine",
 			"RenderTexture", "GetTemporary", 5);
 		void* args_RenderTexture_GetTemporary_5[5]{ &width, &height, &zero, &zero, &one };
@@ -937,20 +1050,16 @@ namespace
 		reflection::InvokeVoid(method_RenderTexture_setactive, nullptr, &renderTexture, "DumpTexture2D|RenderTexture::set_active");
 
 		// var readableTexture = new Texture2D(width, height);
-		static auto klass_Texture2D = il2cpp_symbols::get_class("UnityEngine.CoreModule.dll", "UnityEngine", "Texture2D");
-		static auto ctor_Texture2D_2 = il2cpp_class_get_method_from_name(klass_Texture2D, ".ctor", 2);
-		auto readableTexture = (Il2CppObject*)il2cpp_object_new(klass_Texture2D);
-		void* args_ctor_Texture2D_2[2]{ &width, &height };
-		reflection::Invoke(ctor_Texture2D_2, readableTexture, (Il2CppObject**)args_ctor_Texture2D_2, "DumpTexture2D|new Texture2D");
+		auto readableTexture = CreateNewTexure2D(width, height);
 
 		// readableTexture.ReadPixels(new Rect(0, 0, width, height), 0, 0);
-		static auto method_Texture2D_ReadPixels = il2cpp_class_get_method_from_name(klass_Texture2D, "ReadPixels", 3);
+		static auto method_Texture2D_ReadPixels = il2cpp_symbols_logged::get_method("UnityEngine.CoreModule.dll", "UnityEngine", "Texture2D", "ReadPixels", 3);
 		auto rect = Rect_t{ 0.f, 0.f, (float)width, (float)height };
 		void* args_Texture2D_ReadPixels[3]{ &rect , &zero, &zero };
 		reflection::InvokeVoid(method_Texture2D_ReadPixels, readableTexture, (Il2CppObject**)args_Texture2D_ReadPixels, "DumpTexture2D|Texture2D::ReadPixels");
 
 		// readableTexture.Apply();
-		static auto method_Texture2D_Apply = il2cpp_class_get_method_from_name(klass_Texture2D, "Apply", 0);
+		static auto method_Texture2D_Apply = il2cpp_symbols_logged::get_method("UnityEngine.CoreModule.dll", "UnityEngine", "Texture2D", "Apply", 0);
 		reflection::InvokeVoid(method_Texture2D_Apply, readableTexture, nullptr, "DumpTexture2D|Texture2D::Apply");
 
 		// RenderTexture.set_active(previous);
@@ -1006,6 +1115,8 @@ namespace
 		std::cout << "[DumpTexture2D] " << saveFilePath << std::endl;
 		reflection::Invoke(method_File_WriteAllBytes, nullptr, args_File_WriteAllBytes, "DumpTexture2D|File::WriteAllBytes");
 		dumpedTextureNames.emplace(strTextureName);
+
+		return strTextureName;
 	}
 
 	void DumpSprite(Il2CppObject* sprite, std::string sourceType) {
@@ -1045,7 +1156,9 @@ namespace
 			for (int id : it->second) {
 				auto pi = &id;
 				auto texture = reflection::Invoke(method_Material_GetTextureImpl, material, (Il2CppObject**)&pi, "DumpMaterial|Material::GetTextureImpl");
-				DumpTexture2D(texture, sourceType);
+				int width = 0, height = 0;
+				auto texName = DumpTexture2D(texture, sourceType, &width, &height);
+				ReplaceMaterialTexture(material, width, height, texName, id);
 			}
 		}
 	}
@@ -1054,12 +1167,12 @@ namespace
 		if (0 == strcmp(obj->klass->name, "Image")) {
 			auto method_getsprite = il2cpp_class_get_method_from_name(obj->klass, "get_sprite", 0);
 			auto sprite = reflection::Invoke(method_getsprite, obj, nullptr, "ExtractAsset|Image::get_sprite");
-			DumpSprite(sprite, "Image");
+			//DumpSprite(sprite, "Image");
 		}
 		else if (0 == strcmp(obj->klass->name, "RawImage")) {
 			auto method_gettexture = il2cpp_class_get_method_from_name(obj->klass, "get_texture", 0);
 			auto texture = reflection::Invoke(method_gettexture, obj, nullptr, "ExtractAsset|RawImage::get_texture");
-			DumpTexture2D(texture, "RawImage");
+			//DumpTexture2D(texture, "RawImage");
 		}
 		else if (0 == strcmp(obj->klass->name, "MeshRenderer")) {
 			static auto method_Renderer_getsharedMaterial = il2cpp_symbols_logged::get_method("UnityEngine.CoreModule.dll", "UnityEngine", "Renderer", "get_sharedMaterial", 0);
@@ -1073,10 +1186,10 @@ namespace
 			}
 		}
 		else if (0 == strcmp(obj->klass->name, "Sprite")) {
-			DumpSprite(obj, "Sprite");
+			//DumpSprite(obj, "Sprite");
 		}
 		else if (0 == strcmp(obj->klass->name, "Texture2D")) {
-			DumpTexture2D(obj, "Texture2D");
+			//DumpTexture2D(obj, "Texture2D");
 		}
 	}
 
@@ -3218,6 +3331,9 @@ namespace
 		ADD_HOOK(LiveMVStartData_ctor, "LiveMVStartData_ctor at %p");
 
 		tools::AddNetworkingHooks();
+
+		LoadReplacementTextures();
+		printf("%u textures are loaded to replace.\n", replacementTexureNames.size());
 
 		on_hotKey_0 = []() {
 			startSCGUI();

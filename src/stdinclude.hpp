@@ -62,6 +62,12 @@ LONG WINAPI seh_filter(EXCEPTION_POINTERS* ep);
 #define __EXCEPT(strContext) __except (seh_filter(GetExceptionInformation())) { std::cout << "SEH exception detected in '" << strContext << "'.\n"; }
 
 
+namespace debug {
+	void DumpRelationMemoryHex(const void* target, const size_t length = 0x40);
+	void DumpRegisters();
+}
+
+
 class CharaParam_t {
 public:
 	CharaParam_t(float height, float bust, float head, float arm, float hand) :

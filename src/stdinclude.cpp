@@ -1,88 +1,87 @@
 #include <stdinclude.hpp>
 #include <rapidjson/error/en.h>
 
-static void DumpRelationMemoryHex(const void* target, size_t length = 0x40)
-{
-	if (target == nullptr || length == 0) {
-		return;
-	}
-
-	constexpr size_t LINE_SIZE = 0x10;
-	constexpr size_t LINES_BEFORE_TARGET = 2; // so line index 2 (third line) starts at target
-
-	// Compute addresses as uintptr_t to allow arithmetic
-	uintptr_t tgt = reinterpret_cast<uintptr_t>(target);
-
-	// Compute start address for printing. Clamp to 0 to avoid underflow.
-	uintptr_t start = (tgt >= (LINES_BEFORE_TARGET * LINE_SIZE)) ? (tgt - LINES_BEFORE_TARGET * LINE_SIZE) : 0;
-
-	// Compute how many bytes in total we will print.
-	// We must print from 'start' through 'start + printed_total - 1' inclusive.
-	// Ensure the printed region covers [target, target + length).
-	uintptr_t end_needed = tgt + length;
-	uintptr_t printed_total_bytes = 0;
-	if (end_needed > start) {
-		printed_total_bytes = end_needed - start;
-	}
-	else {
-		printed_total_bytes = 0;
-	}
-
-	// Round printed_total_bytes up to a multiple of LINE_SIZE so we print full lines
-	size_t lines = static_cast<size_t>((printed_total_bytes + (LINE_SIZE - 1)) / LINE_SIZE);
-	if (lines == 0) {
-		lines = 1; // at least one line
-	}
-
-	// Printing loop: read each line (LINE_SIZE bytes) into local buffer and print
-	unsigned char buffer[LINE_SIZE];
-
-	for (size_t line = 0; line < lines; ++line) {
-		uintptr_t line_addr = start + line * LINE_SIZE;
-
-		// For safety when reading possibly unaligned memory, copy byte-by-byte with memcpy from address
-		// Note: if memory is unreadable, this will still likely crash; caller must ensure region is readable.
-		for (size_t b = 0; b < LINE_SIZE; ++b) {
-			uintptr_t byte_addr = line_addr + b;
-			// Only fill valid bytes that fall within [start, end_needed). Otherwise zero.
-			if (byte_addr < end_needed) {
-				// Use memcpy to avoid undefined behaviour from dereferencing arbitrary pointer types
-				std::memcpy(&buffer[b], reinterpret_cast<const void*>(byte_addr), 1);
-			}
-			else {
-				buffer[b] = 0;
-			}
+namespace debug {
+	void DumpRelationMemoryHex(const void* target, const size_t length)
+	{
+		if (target == nullptr || length == 0) {
+			return;
 		}
 
-		// Print the address followed by 16 bytes in two uppercase hex characters each
-		std::printf("%016" PRIxPTR ": ", line_addr);
-		for (size_t b = 0; b < LINE_SIZE; ++b) {
-			std::printf("%02X", static_cast<unsigned int>(buffer[b]));
-			if (b + 1 < LINE_SIZE) std::putchar(' ');
+		constexpr size_t LINE_SIZE = 0x10;
+
+		// Compute addresses as uintptr_t to allow arithmetic
+		uintptr_t start = reinterpret_cast<uintptr_t>(target);
+
+		// Compute how many bytes in total we will print.
+		// We must print from 'start' through 'start + printed_total - 1' inclusive.
+		// Ensure the printed region covers [target, target + length).
+		uintptr_t end_needed = start + length;
+		uintptr_t printed_total_bytes = 0;
+		if (end_needed > start) {
+			printed_total_bytes = end_needed - start;
 		}
-		std::putchar('\n');
+		else {
+			printed_total_bytes = 0;
+		}
+
+		// Round printed_total_bytes up to a multiple of LINE_SIZE so we print full lines
+		size_t lines = static_cast<size_t>((printed_total_bytes + (LINE_SIZE - 1)) / LINE_SIZE);
+		if (lines == 0) {
+			lines = 1; // at least one line
+		}
+
+		// Printing loop: read each line (LINE_SIZE bytes) into local buffer and print
+		unsigned char buffer[LINE_SIZE];
+
+		for (size_t line = 0; line < lines; ++line) {
+			uintptr_t line_addr = start + line * LINE_SIZE;
+
+			// For safety when reading possibly unaligned memory, copy byte-by-byte with memcpy from address
+			// Note: if memory is unreadable, this will still likely crash; caller must ensure region is readable.
+			for (size_t b = 0; b < LINE_SIZE; ++b) {
+				uintptr_t byte_addr = line_addr + b;
+				// Only fill valid bytes that fall within [start, end_needed). Otherwise zero.
+				if (byte_addr < end_needed) {
+					// Use memcpy to avoid undefined behaviour from dereferencing arbitrary pointer types
+					std::memcpy(&buffer[b], reinterpret_cast<const void*>(byte_addr), 1);
+				}
+				else {
+					buffer[b] = 0;
+				}
+			}
+
+			// Print the address followed by 16 bytes in two uppercase hex characters each
+			std::printf("%016" PRIxPTR ": ", line_addr);
+			for (size_t b = 0; b < LINE_SIZE; ++b) {
+				std::printf("%02X", static_cast<unsigned int>(buffer[b]));
+				if (b + 1 < LINE_SIZE) std::putchar(' ');
+			}
+			std::putchar('\n');
+		}
+	}
+
+	void DumpRegisters() {
+		CONTEXT ctx;
+		RtlCaptureContext(&ctx); // or CaptureContext(&ctx) on some toolchains
+
+		std::printf("RIP=%016llX RSP=%016llX RBP=%016llX\n",
+			(unsigned long long)ctx.Rip,
+			(unsigned long long)ctx.Rsp,
+			(unsigned long long)ctx.Rbp);
+		std::printf("RAX=%016llX RBX=%016llX RCX=%016llX RDX=%016llX\n",
+			(unsigned long long)ctx.Rax,
+			(unsigned long long)ctx.Rbx,
+			(unsigned long long)ctx.Rcx,
+			(unsigned long long)ctx.Rdx);
+		std::printf("RSI=%016llX RDI=%016llX  R8=%016llX  R9=%016llX\n",
+			(unsigned long long)ctx.Rsi,
+			(unsigned long long)ctx.Rdi,
+			(unsigned long long)ctx.R8,
+			(unsigned long long)ctx.R9);
 	}
 }
 
-static void DumpRegisters() {
-	CONTEXT ctx;
-	RtlCaptureContext(&ctx); // or CaptureContext(&ctx) on some toolchains
-
-	std::printf("RIP=%016llX RSP=%016llX RBP=%016llX\n",
-		(unsigned long long)ctx.Rip,
-		(unsigned long long)ctx.Rsp,
-		(unsigned long long)ctx.Rbp);
-	std::printf("RAX=%016llX RBX=%016llX RCX=%016llX RDX=%016llX\n",
-		(unsigned long long)ctx.Rax,
-		(unsigned long long)ctx.Rbx,
-		(unsigned long long)ctx.Rcx,
-		(unsigned long long)ctx.Rdx);
-	std::printf("RSI=%016llX RDI=%016llX  R8=%016llX  R9=%016llX\n",
-		(unsigned long long)ctx.Rsi,
-		(unsigned long long)ctx.Rdi,
-		(unsigned long long)ctx.R8,
-		(unsigned long long)ctx.R9);
-}
 
 LONG WINAPI seh_filter(EXCEPTION_POINTERS* ep) {
 	DWORD code = ep->ExceptionRecord->ExceptionCode;
@@ -107,8 +106,8 @@ LONG WINAPI seh_filter(EXCEPTION_POINTERS* ep) {
 		break;
 	}
 
-	DumpRelationMemoryHex(addr);
-	DumpRegisters();
+	debug::DumpRelationMemoryHex((const void*)((uintptr_t)addr - 0x20));
+	debug::DumpRegisters();
 
 	return EXCEPTION_EXECUTE_HANDLER;
 }

@@ -1164,6 +1164,8 @@ namespace
 	}
 
 	void ExtractAsset(Il2CppObject* obj, Il2CppString* name) {
+		static auto klass_Renderer = il2cpp_symbols_logged::get_class("UnityEngine.CoreModule.dll", "UnityEngine", "Renderer");
+
 		if (0 == strcmp(obj->klass->name, "Image")) {
 			auto method_getsprite = il2cpp_class_get_method_from_name(obj->klass, "get_sprite", 0);
 			auto sprite = reflection::Invoke(method_getsprite, obj, nullptr, "ExtractAsset|Image::get_sprite");
@@ -1174,7 +1176,7 @@ namespace
 			auto texture = reflection::Invoke(method_gettexture, obj, nullptr, "ExtractAsset|RawImage::get_texture");
 			//DumpTexture2D(texture, "RawImage");
 		}
-		else if (0 == strcmp(obj->klass->name, "MeshRenderer")) {
+		else if (il2cpp_class_is_assignable_from(klass_Renderer, obj->klass)) {
 			static auto method_Renderer_getsharedMaterial = il2cpp_symbols_logged::get_method("UnityEngine.CoreModule.dll", "UnityEngine", "Renderer", "get_sharedMaterial", 0);
 			static auto method_Renderer_getsharedMaterials = il2cpp_symbols_logged::get_method("UnityEngine.CoreModule.dll", "UnityEngine", "Renderer", "get_sharedMaterials", 0);
 
@@ -1182,14 +1184,17 @@ namespace
 			auto length = il2cpp_array_length(sharedMaterials);
 			for (uint32_t i = 0; i < length; ++i) {
 				auto material = (Il2CppObject*)il2cpp_symbols::array_get_value(sharedMaterials, i);
-				DumpMaterial(material, "MeshRenderer");
+				DumpMaterial(material, obj->klass->name);
 			}
 		}
 		else if (0 == strcmp(obj->klass->name, "Sprite")) {
 			//DumpSprite(obj, "Sprite");
 		}
-		else if (0 == strcmp(obj->klass->name, "Texture2D")) {
+		else if (0 == strcmp(obj->klass->name, "Texture")) {
 			//DumpTexture2D(obj, "Texture2D");
+		}
+		else {
+			//printf("  [Asset] %s: %s\n", reflection::helper::ToUtf8(name).c_str(), obj->klass->name);
 		}
 	}
 
@@ -3333,7 +3338,7 @@ namespace
 		tools::AddNetworkingHooks();
 
 		LoadReplacementTextures();
-		printf("%u textures are loaded to replace.\n", replacementTexureNames.size());
+		printf("%zu textures are loaded to replace.\n", replacementTexureNames.size());
 
 		on_hotKey_0 = []() {
 			startSCGUI();

@@ -29,7 +29,6 @@ il2cpp_type_get_object_t il2cpp_type_get_object;
 il2cpp_gchandle_new_t il2cpp_gchandle_new;
 il2cpp_gchandle_free_t il2cpp_gchandle_free;
 il2cpp_gchandle_get_target_t il2cpp_gchandle_get_target;
-il2cpp_reflection_type_get_type_t il2cpp_reflection_type_get_type;
 il2cpp_class_from_type_t il2cpp_class_from_type;
 il2cpp_runtime_class_init_t il2cpp_runtime_class_init;
 il2cpp_runtime_invoke_t il2cpp_runtime_invoke;
@@ -137,7 +136,6 @@ namespace il2cpp_symbols
 		RESOLVE_IMPORT(il2cpp_gchandle_new);
 		RESOLVE_IMPORT(il2cpp_gchandle_free);
 		RESOLVE_IMPORT(il2cpp_gchandle_get_target);
-		RESOLVE_IMPORT(il2cpp_reflection_type_get_type);
 		RESOLVE_IMPORT(il2cpp_class_from_type);
 		RESOLVE_IMPORT(il2cpp_runtime_class_init);
 		RESOLVE_IMPORT(il2cpp_runtime_invoke);

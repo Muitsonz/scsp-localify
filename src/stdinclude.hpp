@@ -208,6 +208,14 @@ struct UnitIdol {
 	void LoadJson(const char* json);
 };
 
+enum class ClothForceMode {
+	None = 0,
+	VelocityAdd = 1,
+	VelocityChange = 2,
+	VelocityAddWithoutDepth = 10,
+	VelocityChangeWithoutDepth = 11
+};
+
 
 extern std::map<int, std::string> swayTypes;
 extern std::map<int, CharaSwayStringParam_t> charaSwayStringOffset;
@@ -255,6 +263,10 @@ extern bool g_extract_asset_renderer;
 extern bool g_extract_asset_sprite;
 extern bool g_extract_asset_texture2d;
 extern bool g_extract_asset_log_unknown_asset;
+extern bool g_override_magicacloth_inertia;
+extern float g_magicacloth_inertia;
+extern float g_magicacloth_forceratio;
+
 
 namespace tools {
 	extern bool output_networking_calls;

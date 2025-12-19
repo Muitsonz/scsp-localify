@@ -60,6 +60,8 @@ bool g_extract_asset_renderer = false;
 bool g_extract_asset_sprite = false;
 bool g_extract_asset_texture2d = false;
 bool g_extract_asset_log_unknown_asset = false;
+bool g_override_magicacloth_inertia = false;
+float g_magicacloth_inertia = 0.5f;
 
 std::filesystem::path g_localify_base("scsp_localify");
 constexpr const char ConfigJson[] = "scsp-config.json";

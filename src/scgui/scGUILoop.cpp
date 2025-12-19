@@ -369,6 +369,11 @@ namespace SCGUILoop {
 #ifdef __TOOL_HOOK_NETWORKING__
 				ImGui::Checkbox("Output networking calls", &tools::output_networking_calls);
 #endif
+				ImGui::Checkbox("Override inertia", &g_override_magicacloth_inertia);
+				if (g_override_magicacloth_inertia) {
+					ImGui::SameLine();
+					INPUT_AND_SLIDER_FLOAT("Inertia", &g_magicacloth_inertia, 0.f, 1.f);
+				}
 			}
 
 		}

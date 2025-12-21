@@ -65,6 +65,7 @@ LONG WINAPI seh_filter(EXCEPTION_POINTERS* ep);
 namespace debug {
 	void DumpRelationMemoryHex(const void* target, const size_t length = 0x40);
 	void DumpRegisters();
+	void PrintNativeStackTrace(ULONG framesToSkip, ULONG framesToCapture);
 }
 
 
@@ -208,6 +209,40 @@ struct UnitIdol {
 	void LoadJson(const char* json);
 };
 
+namespace managed {
+	struct InertiaConstraintSerializeData : Il2CppObject {
+		// Transform
+		void* anchor;
+		// [Range(0f, 1f)]
+		float anchorInertia;
+		// [FormerlySerializedAs("movementInertia")]; [Range(0f, 1f)]
+		float worldInertia;
+		// [Range(0f, 1f)]
+		float movementInertiaSmoothing;
+		// CheckSliderSerializeData
+		void* movementSpeedLimit;
+		// CheckSliderSerializeData
+		void* rotationSpeedLimit;
+		// [Range(0f, 1f)]
+		float localInertia;
+		// CheckSliderSerializeData
+		void* localMovementSpeedLimit;
+		// CheckSliderSerializeData
+		void* localRotationSpeedLimit;
+		// [Range(0f, 1f)]
+		float depthInertia;
+		// [Range(0f, 1f)]
+		float centrifualAcceleration;
+		// CheckSliderSerializeData
+		void* particleSpeedLimit;
+		// enum TeleportMode { None, Reset, Keep }
+		int32_t teleportMode;
+		float teleportDistance;
+		float teleportRotation;
+	};
+}
+
+
 enum class ClothForceMode {
 	None = 0,
 	VelocityAdd = 1,
@@ -264,8 +299,10 @@ extern bool g_extract_asset_sprite;
 extern bool g_extract_asset_texture2d;
 extern bool g_extract_asset_log_unknown_asset;
 extern bool g_override_magicacloth_inertia;
-extern float g_magicacloth_inertia;
-extern float g_magicacloth_forceratio;
+extern float g_magicacloth_anchorInertia;
+extern float g_magicacloth_worldInertia;
+extern float g_magicacloth_localInertia;
+extern float g_magicacloth_movementInertiaSmoothing;
 
 
 namespace tools {

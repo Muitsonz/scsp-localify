@@ -2804,47 +2804,30 @@ namespace
 	}
 
 
-	std::unordered_set<void*> MagicaClothController_Inertia_backendObjects{};
-
-	HOOK_ORIG_TYPE MagicaClothController_get_Inertia_orig;
-	void* MagicaClothController_get_Inertia_hook(void* _this) {
-		auto obj = HOOK_CAST_CALL(void*, MagicaClothController_get_Inertia)(_this);
-		MagicaClothController_Inertia_backendObjects.emplace(obj);
-		return obj;
-	}
-
-	HOOK_ORIG_TYPE BodyParamFloatProperty__ctor_orig;
-	void BodyParamFloatProperty__ctor_hook(void* _this) {
-		printf("BodyParamFloatProperty__ctor_orig\n");
-		HOOK_CAST_CALL(void, BodyParamFloatProperty__ctor)(_this);
-	}
-
-	HOOK_ORIG_TYPE BodyParamFloatProperty__getValue_orig;
-	float BodyParamFloatProperty__getValue_hook(void* _this, float t) {
-		if (g_override_magicacloth_inertia && MagicaClothController_Inertia_backendObjects.find(_this) != MagicaClothController_Inertia_backendObjects.end()) {
-			printf("BodyParamFloatProperty__getValue_hook: %f [overwtitten]\n", g_magicacloth_inertia);
-			return g_magicacloth_inertia;
-		}
-		else {
-			auto f = HOOK_CAST_CALL(float, BodyParamFloatProperty__getValue)(_this, t);
-			printf("BodyParamFloatProperty__getValue_hook: %f\n", f);
-			return f;
-		}
-	}
-
-
 	void ModifyMagicaCloth(Il2CppObject* cloth) {
-		return;
-
 		static auto klass_MagicaCloth = il2cpp_symbols_logged::get_class("MagicaClothV2.dll", "MagicaCloth2", "MagicaCloth");
-		PRINT(klass_MagicaCloth);
 		static auto field_MagicaCloth_serializeData = il2cpp_class_get_field_from_name(klass_MagicaCloth, "serializeData");
-		PRINT(field_MagicaCloth_serializeData);
 
 		auto sdata = il2cpp_field_get_value_object(field_MagicaCloth_serializeData, cloth);
-		PRINT(sdata);
+
 		static auto klass_ClothSerializeData = il2cpp_symbols_logged::get_class("MagicaClothV2.dll", "MagicaCloth2", "ClothSerializeData");
-		PRINT(klass_ClothSerializeData);
+
+		static auto field_inertiaConstraint = il2cpp_class_get_field_from_name(klass_ClothSerializeData, "inertiaConstraint");
+		auto inertiaConstraint = (managed::InertiaConstraintSerializeData*)il2cpp_field_get_value_object(field_inertiaConstraint, sdata);
+
+		auto name = il2cpp_symbols::get_unity_gameobject_name(cloth);
+		PRINT(name);
+		PRINT(inertiaConstraint->anchorInertia);
+		PRINT(inertiaConstraint->worldInertia);
+		PRINT(inertiaConstraint->localInertia);
+		PRINT(inertiaConstraint->movementInertiaSmoothing);
+
+		if (g_override_magicacloth_inertia) {
+			inertiaConstraint->anchorInertia = g_magicacloth_anchorInertia;
+			inertiaConstraint->worldInertia = g_magicacloth_worldInertia;
+			inertiaConstraint->localInertia = g_magicacloth_localInertia;
+			inertiaConstraint->movementInertiaSmoothing = g_magicacloth_movementInertiaSmoothing;
+		}
 	}
 
 	HOOK_ORIG_TYPE MagicaCloth_BuildAndRun_orig;
@@ -2857,11 +2840,6 @@ namespace
 	void MagicaCloth_SetParameterChange_hook(void* _this) {
 		ModifyMagicaCloth((Il2CppObject*)_this);
 		HOOK_CAST_CALL(void, MagicaCloth_SetParameterChange)(_this);
-	}
-
-	HOOK_ORIG_TYPE MagicaCloth_AddForce_orig;
-	void MagicaCloth_AddForce_hook(void* _this, Vector3_t forceDirection, float forceVelocity, ClothForceMode fmode) {
-		HOOK_CAST_CALL(void, MagicaCloth_AddForce)(_this, forceDirection, forceVelocity, fmode);
 	}
 
 
@@ -3357,34 +3335,14 @@ namespace
 
 		auto Subject_OnNext_addr = GetSubject_OnNext_addr();
 
-		auto MagicaClothController_get_Inertia_addr = il2cpp_symbols_logged::get_method_pointer(
-			"PRISM.Module.CustomMagicaCloth.dll", "PRISM.Module.CustomMagicaCloth",
-			"MagicaClothController", "get_Inertia", 0
-		);
-
-		auto BodyParamFloatProperty__ctor_addr = il2cpp_symbols_logged::get_method_pointer(
-			"PRISM.Module.CustomMagicaCloth.dll", "PRISM.Module.CustomMagicaCloth",
-			"BodyParamFloatProperty", ".ctor", 0
-		);
-
-		auto BodyParamFloatProperty__getValue_addr = il2cpp_symbols_logged::get_method_pointer(
-			"PRISM.Module.CustomMagicaCloth.dll", "PRISM.Module.CustomMagicaCloth",
-			"BodyParamFloatProperty", "_getValue", 1
-		);
-
 		auto MagicaCloth_BuildAndRun_addr = il2cpp_symbols_logged::get_method_pointer(
 			"MagicaClothV2.dll", "MagicaCloth2",
 			"MagicaCloth", "BuildAndRun", 0
-		); 
-		
+		);
+
 		auto MagicaCloth_SetParameterChange_addr = il2cpp_symbols_logged::get_method_pointer(
 			"MagicaClothV2.dll", "MagicaCloth2",
 			"MagicaCloth", "SetParameterChange", 0
-		);
-
-		auto MagicaCloth_AddForce_addr = il2cpp_symbols_logged::get_method_pointer(
-			"MagicaClothV2.dll", "MagicaCloth2",
-			"MagicaCloth", "AddForce", 3
 		);
 
 #pragma endregion
@@ -3452,12 +3410,8 @@ namespace
 		ADD_HOOK_1(RunwayEventStartData_ctor);
 
 		ADD_HOOK_1(Subject_OnNext);
-		ADD_HOOK_1(MagicaClothController_get_Inertia);
-		ADD_HOOK_1(BodyParamFloatProperty__ctor);
-		ADD_HOOK_1(BodyParamFloatProperty__getValue);
 		ADD_HOOK_1(MagicaCloth_BuildAndRun);
 		ADD_HOOK_1(MagicaCloth_SetParameterChange);
-		ADD_HOOK_1(MagicaCloth_AddForce);
 
 		tools::AddNetworkingHooks();
 

@@ -337,6 +337,16 @@ namespace SCGUILoop {
 				}
 			}
 
+			if (ImGui::CollapsingHeader("MagicaCloth"), ImGuiTreeNodeFlags_DefaultOpen) {
+				ImGui::Checkbox("Override Inertia", &g_override_magicacloth_inertia);
+				if (g_override_magicacloth_inertia) {
+					ImGui::SliderFloat("Anchor Inertia", &g_magicacloth_anchorInertia, 0, 1);
+					ImGui::SliderFloat("World Inertia", &g_magicacloth_worldInertia, 0, 1);
+					ImGui::SliderFloat("Local Inertia", &g_magicacloth_localInertia, 0, 1);
+					ImGui::SliderFloat("Smoothing", &g_magicacloth_movementInertiaSmoothing, 0, 1);
+				}
+			}
+
 			if (ImGui::CollapsingHeader("Assets"), ImGuiTreeNodeFlags_DefaultOpen) {
 				ImGui::Checkbox("Use quick probing for unknown shaders", &g_shader_quickprobing);
 				ImGui::SameLine();
@@ -369,11 +379,6 @@ namespace SCGUILoop {
 #ifdef __TOOL_HOOK_NETWORKING__
 				ImGui::Checkbox("Output networking calls", &tools::output_networking_calls);
 #endif
-				ImGui::Checkbox("Override inertia", &g_override_magicacloth_inertia);
-				if (g_override_magicacloth_inertia) {
-					ImGui::SameLine();
-					INPUT_AND_SLIDER_FLOAT("Inertia", &g_magicacloth_inertia, 0.f, 1.f);
-				}
 			}
 
 		}

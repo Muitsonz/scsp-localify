@@ -80,6 +80,16 @@ namespace debug {
 			(unsigned long long)ctx.R8,
 			(unsigned long long)ctx.R9);
 	}
+
+	void PrintNativeStackTrace(ULONG framesToSkip,  ULONG framesToCapture) {
+		PVOID* backTrace = new PVOID[framesToCapture];
+		RtlCaptureStackBackTrace(0, framesToCapture, backTrace, NULL);
+		for (int i = 0; i < framesToCapture; ++i) {
+			printf("> %p ", backTrace[i]);
+		}
+		printf("\n");
+		delete[] backTrace;
+	}
 }
 
 

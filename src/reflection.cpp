@@ -65,6 +65,31 @@ namespace reflection {
 		return Invoke(method, nullptr, (Il2CppObject**)&refl, "Activator_CreateInstance");
 	}
 
+	Il2CppString* UnityObject_get_name(Il2CppObject* obj) {
+		static auto klass = il2cpp_symbols_logged::get_class("UnityEngine.CoreModule.dll", "UnityEngine", "Object");
+		static auto method = il2cpp_class_get_method_from_name(klass, "get_name", 0);
+		return method->Invoke<Il2CppString*>(obj, {});
+	}
+
+	Il2CppObject* Component_get_gameObject(Il2CppObject* c) {
+		static auto klass = il2cpp_symbols_logged::get_class("UnityEngine.CoreModule.dll", "UnityEngine", "Component");
+		static auto method = il2cpp_class_get_method_from_name(klass, "get_gameObject", 0);
+		return method->Invoke<Il2CppObject*>(c, {});
+	}
+
+	Il2CppObject* GameObject_get_transform(Il2CppObject* go) {
+		static auto klass = il2cpp_symbols_logged::get_class("UnityEngine.CoreModule.dll", "UnityEngine", "GameObject");
+		static auto method = il2cpp_class_get_method_from_name(klass, "get_transform", 0);
+		return method->Invoke<Il2CppObject*>(go, {});
+	}
+
+	Il2CppObject* Transform_get_parent(Il2CppObject* transform) {
+		static auto klass = il2cpp_symbols_logged::get_class("UnityEngine.CoreModule.dll", "UnityEngine", "Transform");
+		static auto method = il2cpp_class_get_method_from_name(klass, "get_parent", 0);
+		return method->Invoke<Il2CppObject*>(transform, {});
+	}
+
+
 	Il2CppObject* InvokeInTry(const MethodInfo* method, const Il2CppObject* instance, Il2CppObject** params, Il2CppObject** exc, const char* context) {
 		__try {
 			return (Il2CppObject*)il2cpp_runtime_invoke((MethodInfo*)method, (void*)instance, (void**)params, exc);
@@ -97,5 +122,15 @@ namespace reflection::helper {
 		il2cpp_array_size_t length = il2cpp_array_length(managedBytes);
 		std::string native(reinterpret_cast<char*>(raw), length);
 		return native;
+	}
+
+	Il2CppObject* GetParentGameObject(Il2CppObject* go) {
+		static auto klass = il2cpp_symbols_logged::get_class("UnityEngine.CoreModule.dll", "UnityEngine", "GameObject");
+		if (!go || !il2cpp_class_is_assignable_from(klass, il2cpp_object_get_class(go))) return nullptr;
+		auto tf = reflection::GameObject_get_transform(go);
+		if (!tf) return nullptr;
+		auto parentTf = reflection::Transform_get_parent(tf);
+		if (!parentTf) return nullptr;
+		return reflection::Component_get_gameObject(parentTf);
 	}
 }

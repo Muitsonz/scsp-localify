@@ -40,6 +40,14 @@ namespace reflection {
 
 	Il2CppObject* Activator_CreateInstance(Il2CppReflectionType* refl);
 
+	Il2CppString* UnityObject_get_name(Il2CppObject* obj);
+
+	Il2CppObject* Component_get_gameObject(Il2CppObject* c);
+
+	Il2CppObject* GameObject_get_transform(Il2CppObject* go);
+
+	Il2CppObject* Transform_get_parent(Il2CppObject* transform);
+
 
 	Il2CppObject* InvokeInTry(const MethodInfo* method, const Il2CppObject* instance, Il2CppObject** params, Il2CppObject** exc, const char* context);
 	template<typename T = Il2CppObject*> T Invoke(const MethodInfo* method, const Il2CppObject* instance, Il2CppObject** params, const char* context = nullptr) {
@@ -66,4 +74,5 @@ namespace reflection {
 
 namespace reflection::helper {
 	std::string ToUtf8(Il2CppString* s);
+	Il2CppObject* GetParentGameObject(Il2CppObject* go);
 }

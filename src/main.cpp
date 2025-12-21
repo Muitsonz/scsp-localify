@@ -61,7 +61,10 @@ bool g_extract_asset_sprite = false;
 bool g_extract_asset_texture2d = false;
 bool g_extract_asset_log_unknown_asset = false;
 bool g_override_magicacloth_inertia = false;
-float g_magicacloth_inertia = 0.5f;
+float g_magicacloth_anchorInertia = 0;
+float g_magicacloth_worldInertia = 0.1f;
+float g_magicacloth_localInertia = 0.1f;
+float g_magicacloth_movementInertiaSmoothing = 0.4f;
 
 std::filesystem::path g_localify_base("scsp_localify");
 constexpr const char ConfigJson[] = "scsp-config.json";

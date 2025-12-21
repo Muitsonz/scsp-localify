@@ -691,6 +691,11 @@ namespace il2cpp_symbols
 	const char* il2cpp_method_get_param_type_name(const MethodInfo* mi, uint32_t index);
 
 	template <typename T> T unbox(Il2CppObject* boxed) { return *(T*)il2cpp_object_unbox(boxed); }
+
+	Il2CppClass* get_nested_class(Il2CppClass* klass, const char* nestedClassName);
+
+	// @param pIncludedParentCount: [In] how many parent gameobjects' names should be included, NULL as 0; [Out] how many names are actually used, only returns when not NULL
+	std::string get_unity_gameobject_name(Il2CppObject* obj, bool excludeThisName = false, __inout_opt int* pIncludedParentCount = nullptr);
 }
 
 namespace il2cpp_symbols_logged {

@@ -407,6 +407,15 @@ namespace SCGUILoop {
 					ImGui::Checkbox("[Legacy] Re-enable ClipPlane overriding", &g_reenable_clipPlane);
 					ImGui::SameLine();
 					HELP_TOOLTIP("(?)", "Re-enable the modification of nearClipPlane & farClipPlane like old versions.");
+					if (g_reenable_clipPlane) {
+						ImGui::Dummy(ImVec2(40, 0));
+						ImGui::SameLine();
+						ImGui::InputFloat("near clip plane", &g_nearClipPlane, 0.001f, 0.01f);
+
+						ImGui::Dummy(ImVec2(40, 0));
+						ImGui::SameLine();
+						ImGui::InputFloat("far clip plane", &g_farClipPlane, 1, 10);
+					}
 					INPUT_AND_SLIDER_FLOAT("Move Speed", &BaseCamera::moveStep, 0.0f, 0.5f);
 					INPUT_AND_SLIDER_FLOAT("Mouse Speed", &g_free_camera_mouse_speed, 0.0f, 100.0f);
 					INPUT_AND_SLIDER_FLOAT("Camera FOV", &SCCamera::baseCamera.fov, 0.0f, 360.0f);

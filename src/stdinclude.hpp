@@ -250,6 +250,8 @@ extern int g_start_resolution_w;
 extern int g_start_resolution_h;
 extern bool g_start_resolution_fullScreen;
 extern bool g_reenable_clipPlane;
+extern float g_nearClipPlane;
+extern float g_farClipPlane;
 extern bool g_shader_quickprobing;
 extern bool g_loadasset_output;
 extern bool g_extract_asset;

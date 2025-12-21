@@ -2607,7 +2607,7 @@ namespace
 	void Unity_set_nearClipPlane_hook(void* _this, float single) {
 		if (_this == baseCamera) {
 			if (g_enable_free_camera && g_reenable_clipPlane) {
-				single = 0.001f;
+				single = g_nearClipPlane;
 			}
 		}
 		return HOOK_CAST_CALL(void, Unity_set_nearClipPlane)(_this, single);
@@ -2618,7 +2618,7 @@ namespace
 		auto ret = HOOK_CAST_CALL(float, Unity_get_nearClipPlane)(_this);
 		if (_this == baseCamera) {
 			if (g_enable_free_camera && g_reenable_clipPlane) {
-				ret = 0.001f;
+				ret = g_nearClipPlane;
 			}
 		}
 		return ret;
@@ -2628,7 +2628,7 @@ namespace
 		auto ret = HOOK_CAST_CALL(float, Unity_get_farClipPlane)(_this);
 		if (_this == baseCamera) {
 			if (g_enable_free_camera && g_reenable_clipPlane) {
-				ret = 2500.0f;
+				ret = g_farClipPlane;
 			}
 		}
 		return ret;
@@ -2638,7 +2638,7 @@ namespace
 	void Unity_set_farClipPlane_hook(void* _this, float value) {
 		if (_this == baseCamera) {
 			if (g_enable_free_camera && g_reenable_clipPlane) {
-				value = 2500.0f;
+				value = g_farClipPlane;
 			}
 		}
 		HOOK_CAST_CALL(void, Unity_set_farClipPlane)(_this, value);

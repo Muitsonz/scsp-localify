@@ -41,9 +41,11 @@ namespace SCGUILoop {
 		bool hasData = false;
 		std::string name = "";
 		float fov = 0.0f;
-
 		struct { float x, y, z; } pos = { 0,0,0 };
 		struct { float x, y, z; } lookAt = { 0,0,0 };
+		bool overwriteClipPlane = false;
+		float nearClipPlane;
+		float farClipPlane;
 	};
 
 	rapidjson::Value SerializeFreeCamState(const FreeCamState& state, rapidjson::Document::AllocatorType& allocator) {
@@ -66,6 +68,12 @@ namespace SCGUILoop {
 			valLookAt.PushBack(state.lookAt.y, allocator);
 			valLookAt.PushBack(state.lookAt.z, allocator);
 			obj.AddMember("lookAt", valLookAt, allocator);
+
+			if (g_reenable_clipPlane) {
+				obj.AddMember("overwriteClipPlane", rapidjson::Value(true), allocator);
+				obj.AddMember("nearClipPlane", rapidjson::Value(g_nearClipPlane), allocator);
+				obj.AddMember("farClipPlane", rapidjson::Value(g_farClipPlane), allocator);
+			}
 		}
 		return obj;
 	}
@@ -89,8 +97,48 @@ namespace SCGUILoop {
 				if (length > 1 && arr[1].IsNumber()) state.lookAt.y = arr[1].GetFloat();
 				if (length > 2 && arr[2].IsNumber()) state.lookAt.z = arr[2].GetFloat();
 			}
+			if (v.HasMember("overwriteClipPlane") && v["overwriteClipPlane"].IsBool() && v["overwriteClipPlane"].GetBool()) {
+				state.overwriteClipPlane = true;
+				if (v.HasMember("nearClipPlane") && v["nearClipPlane"].IsFloat()) state.nearClipPlane = v["nearClipPlane"].GetFloat();
+				if (v.HasMember("farClipPlane") && v["farClipPlane"].IsFloat()) state.nearClipPlane = v["farClipPlane"].GetFloat();
+			}
 		}
 		return state;
+	}
+
+	rapidjson::Value SerializeUnitIdol(const UnitIdol& idol, rapidjson::Document::AllocatorType& allocator) {
+		rapidjson::Value obj(rapidjson::kObjectType);
+		obj.AddMember("charaId", rapidjson::Value(idol.CharaId), allocator);
+		if (idol.CharaId >= 0) {
+			obj.AddMember("clothId", rapidjson::Value(idol.ClothId), allocator);
+			obj.AddMember("hairId", rapidjson::Value(idol.HairId), allocator);
+
+			rapidjson::Value accessoryIds(rapidjson::kArrayType);
+			for (int i = 0; i < idol.AccessoryIdsLength; ++i) {
+				accessoryIds.PushBack(idol.AccessoryIds[i], allocator);
+			}
+			obj.AddMember("accessoryIds", accessoryIds, allocator);
+		}
+
+		return obj;
+	}
+	UnitIdol DeserializeUnitIdol(const rapidjson::Value& v) {
+		UnitIdol idol;
+		if (v.HasMember("charaId") && v["charaId"].IsInt()) idol.CharaId = v["charaId"].GetInt();
+		if (idol.CharaId >= 0) {
+			if (v.HasMember("clothId") && v["clothId"].IsInt()) idol.ClothId = v["clothId"].GetInt();
+			if (v.HasMember("hairId") && v["hairId"].IsInt()) idol.HairId = v["hairId"].GetInt();
+			if (v.HasMember("accessoryIds") && v["accessoryIds"].IsArray()) {
+				const auto& arr = v["accessoryIds"].GetArray();
+				if ((idol.AccessoryIdsLength = arr.Size()) > 0) {
+					idol.AccessoryIds = new int[idol.AccessoryIdsLength];
+					for (int i = 0; i < idol.AccessoryIdsLength; ++i) {
+						idol.AccessoryIds[i] = arr[i].GetInt();
+					}
+				}
+			}
+		}
+		return idol;
 	}
 
 
@@ -247,6 +295,50 @@ namespace SCGUILoop {
 	char inputOverrideMvUnitIdol[1024] = "";
 	void overrideMvUnitIdolLoop() {
 		if (ImGui::Begin("Override MvUnit Idols")) {
+
+			// export, append; remove all
+			ImGui::Dummy(ImVec2(40, 0));
+			ImGui::SameLine();
+			if (ImGui::Button("Export to clipboard##overwriteIdols")) {
+				rapidjson::Document doc;
+				doc.SetArray();
+				auto& allocator = doc.GetAllocator();
+				for (auto& idol : overridenMvUnitIdols) {
+					doc.PushBack(SerializeUnitIdol(idol, allocator), allocator);
+				}
+				rapidjson::StringBuffer buffer;
+				rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+				doc.Accept(writer);
+				std::string serialized(buffer.GetString());
+				auto r = WriteClipboard(serialized);
+				ShowMessageBox((r ? "Success" : "Failed"));
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Overwrite from clipboard##overwriteIdols")) {
+				std::string text;
+				if (!ReadClipboard(&text)) {
+					ShowMessageBox("Failed to read clipboard.");
+				}
+				else {
+					rapidjson::Document doc;
+					doc.Parse(text.c_str());
+					if (doc.IsArray()) {
+						const auto& arr = doc.GetArray();
+						const auto length = std::min((int)arr.Size(), overridenMvUnitIdols_length);
+						for (int i = 0; i < length; ++i) {
+							auto parsed = DeserializeUnitIdol(arr[i]);
+							overridenMvUnitIdols[i] = parsed;
+						}
+					}
+				}
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Remove all##overwriteIdols")) {
+				for (int i = 0; i < overridenMvUnitIdols_length; ++i) {
+					overridenMvUnitIdols[i].Clear();
+				}
+			}
+
 			for (int i = 0; i < overridenMvUnitIdols_length; ++i) {
 				char label[1024];
 
@@ -334,11 +426,11 @@ namespace SCGUILoop {
 			ImGui::SameLine();
 			HELP_TOOLTIP("(?)", "影分身术！\n允许在 Live 中选择同一人。\n（此模式的编组数据会上传，请小心你的号）")
 
-			ImGui::Checkbox("Enable Character Parameter Editor", &g_enable_chara_param_edit);
+				ImGui::Checkbox("Enable Character Parameter Editor", &g_enable_chara_param_edit);
 			ImGui::SameLine();
 			HELP_TOOLTIP("(?)", "启用角色身体参数编辑器")
 
-			ImGui::Checkbox("Unlock Stories", &g_unlock_PIdol_and_SChara_events);
+				ImGui::Checkbox("Unlock Stories", &g_unlock_PIdol_and_SChara_events);
 
 			if (ImGui::CollapsingHeader("Resolution Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
 				ImGui::Text("Window Resolution Settings");
@@ -481,10 +573,15 @@ namespace SCGUILoop {
 							freeCamSlots[i].lookAt.x = SCCamera::baseCamera.lookAt.x;
 							freeCamSlots[i].lookAt.y = SCCamera::baseCamera.lookAt.y;
 							freeCamSlots[i].lookAt.z = SCCamera::baseCamera.lookAt.z;
+
+							if (freeCamSlots[i].overwriteClipPlane = g_reenable_clipPlane) {
+								freeCamSlots[i].nearClipPlane = g_nearClipPlane;
+								freeCamSlots[i].farClipPlane = g_farClipPlane;
+							}
 						}
 						ImGui::SameLine();
 
-						// --- SLOT BUTTON ---
+						// --- SLOT BUTTON (apply) ---
 						std::string slotName;
 						if (!freeCamSlots[i].name.empty()) {
 							slotName = freeCamSlots[i].name;
@@ -513,6 +610,10 @@ namespace SCGUILoop {
 								SCCamera::baseCamera.lookAt.x = freeCamSlots[i].lookAt.x;
 								SCCamera::baseCamera.lookAt.y = freeCamSlots[i].lookAt.y;
 								SCCamera::baseCamera.lookAt.z = freeCamSlots[i].lookAt.z;
+
+								g_reenable_clipPlane = freeCamSlots[i].overwriteClipPlane;
+								g_nearClipPlane = freeCamSlots[i].nearClipPlane;
+								g_farClipPlane = freeCamSlots[i].farClipPlane;
 							}
 						}
 						ImGui::PopStyleColor();

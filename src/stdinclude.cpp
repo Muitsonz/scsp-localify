@@ -203,7 +203,8 @@ void UnitIdol::Clear() {
 	CharaId = -1;
 	ClothId = 0;
 	HairId = 0;
-	delete[] AccessoryIds;
+	if (AccessoryIds != nullptr)
+		delete[] AccessoryIds;
 	AccessoryIds = nullptr;
 	AccessoryIdsLength = 0;
 }

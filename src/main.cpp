@@ -93,6 +93,43 @@ namespace
 
 namespace
 {
+	bool ReadCameraKey(std::vector<std::string>& logs, std::string configKeyName, int mapKey, rapidjson::Value& value) {
+		if (value.IsString()) {
+			const char* s = value.GetString();
+			if (s && value.GetStringLength() == 1) {
+				SCCamera::CameraControlKeyMapping[s[0]] = mapKey;
+				logs.emplace_back("Key binding changed: '" + configKeyName + "' = " + std::to_string(s[0]) + "\n");
+				return true;
+			}
+			else {
+				logs.emplace_back("Invalid string input for key '" + configKeyName + "'.\n");
+				return false;
+			}
+		}
+		else if (value.IsInt()) {
+			int i = value.GetInt();
+			if (i >= 0 && i <= 255) {
+				SCCamera::CameraControlKeyMapping[i] = mapKey;
+				logs.emplace_back("Key binding changed: '" + configKeyName + "' = " + std::to_string(i) + "\n");
+				return true;
+			}
+			else {
+				logs.emplace_back("Invalid int input for key '" + configKeyName + "'.\n");
+				return false;
+			}
+		}
+		else {
+			logs.emplace_back("Invalid input for key '" + configKeyName + "'.\n");
+			return false;
+		}
+	}
+#define ReadJsonKeyBinding(_STR_CONFIG_KEY_NAME_, _VAL_MAP_KEY_) \
+	if (document.HasMember(_STR_CONFIG_KEY_NAME_)) { \
+		ReadCameraKey(logs, _STR_CONFIG_KEY_NAME_, _VAL_MAP_KEY_, document[_STR_CONFIG_KEY_NAME_]); \
+	} else { \
+		SCCamera::CameraControlKeyMapping[_VAL_MAP_KEY_] = _VAL_MAP_KEY_; \
+	}
+
 	std::vector<std::string> read_config(std::vector<std::string>& logs)
 	{
 		std::ifstream config_stream{ ConfigJson };
@@ -199,7 +236,21 @@ namespace
 				g_start_resolution_h = startResolution["h"].GetInt();
 				g_start_resolution_fullScreen = startResolution["isFull"].GetBool();
 			}
-			
+
+			ReadJsonKeyBinding("key_w_camera_forward", KEY_W);
+			ReadJsonKeyBinding("key_s_camera_back", KEY_S);
+			ReadJsonKeyBinding("key_a_camera_left", KEY_A);
+			ReadJsonKeyBinding("key_d_camera_right", KEY_D);
+			ReadJsonKeyBinding("key_ctrl_camera_down", KEY_CTRL);
+			ReadJsonKeyBinding("key_space_camera_up", KEY_SPACE);
+			ReadJsonKeyBinding("key_up_cameralookat_up", KEY_UP);
+			ReadJsonKeyBinding("key_down_cameralookat_down", KEY_DOWN);
+			ReadJsonKeyBinding("key_left_cameralookat_left", KEY_LEFT);
+			ReadJsonKeyBinding("key_right_cameralookat_right", KEY_RIGHT);
+			ReadJsonKeyBinding("key_q_camera_fov_increase", KEY_Q);
+			ReadJsonKeyBinding("key_e_camera_fov_decrease", KEY_E);
+			ReadJsonKeyBinding("key_r_camera_reset", KEY_R);
+			ReadJsonKeyBinding("key_192_camera_mouseMove", KEY_192);
 		}
 
 		config_stream.close();
@@ -268,10 +319,10 @@ int __stdcall DllMain(HINSTANCE dllModule, DWORD reason, LPVOID)
 			std::condition_variable cond;
 			std::atomic<bool> hookIsReady(false);
 			g_on_hook_ready = [&]
-			{
-				hookIsReady.store(true, std::memory_order_release);
-				cond.notify_one();
-			};
+				{
+					hookIsReady.store(true, std::memory_order_release);
+					cond.notify_one();
+				};
 
 			// 依赖检查游戏版本的指针加载，因此在 hook 完成后再加载翻译数据
 			std::unique_lock lock(mutex);

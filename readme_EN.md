@@ -81,6 +81,8 @@ iM@S SCSP localify plugin.
 
 # Free Camera Instructions
 
+> The following is the default key binding, and can be customized by config files.
+
 - Set `enable` under `baseFreeCamera` in `scsp-config.json` to `true`.
 - Scope of application: All 3D scenes. Including but not limited to homepage, story, Live.
 > With the unity engine updating in game v2.6.1, there're still unfixed bugs about free camera feature now.
@@ -90,7 +92,7 @@ iM@S SCSP localify plugin.
 ## Free Camera Operation Method
 
 - Movement: `W`, `S`, `A`, `D`
-- Ascend: `Space`, Descend: `Ctrl`
+- Ascend: `Space` (overwritten as `Alt` in config files distributed after plugin v1.3.6), Descend: `Ctrl`
 - Reset camera: `R`
 
 - Camera Rotation: 
@@ -102,6 +104,32 @@ iM@S SCSP localify plugin.
   - Keyboard: `Q`, `E`
   - Or mouse scroll wheel
 
+
+ ## Customizing free camera key bindings
+ - All config items are also located in the `scsp-config.json` file.
+ - As the update of game v2.9.0 introduced some key bindings, the default camera ascending key binding `Space` is bound to `Alt` in the config files distributed after plugin v1.3.6. But if the config file isn't edited, it keeps `Space` as unchanged.
+
+| Configuration Item          | Default Value             |
+| --------------------------- | ------------------------- |
+| key_w_camera_forward        | `W`                       |
+| key_s_camera_back           | `S`                       |
+| key_a_camera_left           | `A`                       |
+| key_d_camera_right          | `D`                       |
+| key_ctrl_camera_down        | `17` (ctrl)               |
+| key_space_camera_up         | `18` (alt)                |
+| key_up_cameralookat_up      | `38` (↑)                  |
+| key_down_cameralookat_down  | `40` (↓)                  |
+| key_left_cameralookat_left  | `37` (←)                  |
+| key_right_cameralookat_right| `39` (→)                  |
+| key_q_camera_fov_increase   | `Q`                       |
+| key_e_camera_fov_decrease   | `E`                       |
+| key_r_camera_reset          | `R`                       |
+| key_192_camera_mouseMove    | `192` (`` ` ``, backtick) |
+
+
+About JSON value: For key bindings, two types of values are acceptable:
+- `char[1]` single character string, wrapped by double quotes, to express the letter key, like `"W"` for key W
+- `int` an integer to bind to a windows virtual key directly, see also https://learn.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
 
 
 # Live MV Instructions

@@ -88,8 +88,10 @@
 
 ## 自由视角操作方法
 
+> 下述为默认按键，具体按键可以通过配置文件进行自定义
+
 - 移动: `W`, `S`, `A`, `D`
-- 上移: `Space`，下移: `Ctrl`
+- 上移: `Space` （插件v1.3.6开始分发的配置文件中重载为 `Alt`），下移: `Ctrl`
 - 摄像头复位: `R`
 
 - 视角转动: 
@@ -101,6 +103,33 @@
   - 键盘: `Q`, `E`
   - 或者鼠标滚轮
 
+
+ ### 自由视角按键设置
+
+- 所有配置项同样位于 `scsp-config.json` 文件中
+- 由于游戏v2.9.0更新了键盘操作，该插件既往默认的自由视角上移按键 `Space` 从插件v1.3.6开始分发的配置文件中修改为 `Alt`，但若配置文件没有修改，默认仍保持 `Space` 不变
+
+| 配置项                       | 默认值                     |
+| --------------------------- | ------------------------- |
+| key_w_camera_forward        | `W`                       |
+| key_s_camera_back           | `S`                       |
+| key_a_camera_left           | `A`                       |
+| key_d_camera_right          | `D`                       |
+| key_ctrl_camera_down        | `17` (ctrl)               |
+| key_space_camera_up         | `18` (alt)                |
+| key_up_cameralookat_up      | `38` (↑)                  |
+| key_down_cameralookat_down  | `40` (↓)                  |
+| key_left_cameralookat_left  | `37` (←)                  |
+| key_right_cameralookat_right| `39` (→)                  |
+| key_q_camera_fov_increase   | `Q`                       |
+| key_e_camera_fov_decrease   | `E`                       |
+| key_r_camera_reset          | `R`                       |
+| key_192_camera_mouseMove    | `192` (`` ` ``, backtick) |
+
+
+JSON值说明：对于按键设置接受以下两种类型的值：
+- `char[1]` 单字节字符串，即用双引号包绕的单个字母或数字，表示相应的按键，如 `"W"` 表示W键
+- `int` 整数数值，直接绑定到相应的 windows virtual key，可参考 https://learn.microsoft.com/zh-cn/windows/win32/inputdev/virtual-key-codes
 
 
  # Live MV 功能说明

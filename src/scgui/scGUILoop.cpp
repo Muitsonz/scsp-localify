@@ -338,13 +338,7 @@ namespace SCGUILoop {
 			}
 
 			if (ImGui::CollapsingHeader("MagicaCloth"), ImGuiTreeNodeFlags_DefaultOpen) {
-				ImGui::Checkbox("Override Inertia", &g_override_magicacloth_inertia);
-				if (g_override_magicacloth_inertia) {
-					ImGui::SliderFloat("Anchor Inertia", &g_magicacloth_anchorInertia, 0, 1);
-					ImGui::SliderFloat("World Inertia", &g_magicacloth_worldInertia, 0, 1);
-					ImGui::SliderFloat("Local Inertia", &g_magicacloth_localInertia, 0, 1);
-					ImGui::SliderFloat("Smoothing", &g_magicacloth_movementInertiaSmoothing, 0, 1);
-				}
+				ImGui::Checkbox("Override MagicaCloth", &g_override_magicacloth);
 			}
 
 			if (ImGui::CollapsingHeader("Assets"), ImGuiTreeNodeFlags_DefaultOpen) {

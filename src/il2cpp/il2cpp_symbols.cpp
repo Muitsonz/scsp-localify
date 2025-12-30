@@ -65,6 +65,15 @@ std::string Il2CppString::ToUtf8String() {
 }
 
 
+FieldInfo* Il2CppClass::GetField(const char* name) {
+	return il2cpp_class_get_field_from_name(this, name);
+}
+
+Il2CppClass* Il2CppClass::GetNestedClass(const char* name) {
+	return il2cpp_symbols::get_nested_class(this, name);
+}
+
+
 Il2CppObject* MethodInfo::ReflectionInvoke(const Il2CppObject* instance, std::initializer_list<Il2CppObject*> params) const {
 	auto declaringKlass = il2cpp_method_get_declaring_type(this);
 	std::string fullname = std::format(
@@ -304,7 +313,7 @@ namespace il2cpp_symbols
 		return nullptr;
 	}
 
-	std::string get_unity_gameobject_name(Il2CppObject* obj, bool excludeThisName, __inout_opt int* pIncludedParentCount) {
+	std::string get_unity_gameobject_fullname(Il2CppObject* obj, bool excludeThisName, __inout_opt int* pIncludedParentCount) {
 		static auto klass_Component = il2cpp_symbols_logged::get_class("UnityEngine.CoreModule.dll", "UnityEngine", "Component");
 		static auto method_Component_get_gameObject = il2cpp_class_get_method_from_name(klass_Component, "get_gameObject", 0);
 

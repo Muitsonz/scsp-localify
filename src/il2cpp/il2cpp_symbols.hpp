@@ -7,6 +7,7 @@ typedef struct Il2CppObject Il2CppObject;
 typedef struct Il2CppString Il2CppString;
 typedef struct MethodInfo MethodInfo;
 typedef uint32_t il2cpp_array_size_t;
+typedef struct FieldInfo FieldInfo;
 
 // UnityEngine.Color
 struct Color_t
@@ -202,15 +203,6 @@ struct ParameterInfo
 	const Il2CppType* parameter_type;
 };
 
-struct FieldInfo
-{
-	const char* name;
-	const Il2CppType* type;
-	uintptr_t parent;
-	int32_t offset;
-	uint32_t token;
-};
-
 typedef struct PropertyInfo
 {
 	Il2CppClass* parent;
@@ -358,6 +350,10 @@ typedef struct Il2CppClass // unity 6000.0.45f1
 	uint8_t is_vtable_initialized : 1;
 	uint8_t is_byref_like : 1;
 	VirtualInvokeData vtable[0];
+
+
+	FieldInfo* GetField(const char* name);
+	Il2CppClass* GetNestedClass(const char* name);
 } Il2CppClass;
 
 
@@ -535,6 +531,22 @@ extern il2cpp_string_length_t il2cpp_string_length;
 extern il2cpp_type_get_class_or_element_class_t il2cpp_type_get_class_or_element_class;
 extern il2cpp_type_get_name_t il2cpp_type_get_name;
 
+struct FieldInfo
+{
+	const char* name;
+	const Il2CppType* type;
+	uintptr_t parent;
+	int32_t offset;
+	uint32_t token;
+
+	template<typename T> void GetNativeValue(Il2CppObject* instance, T* dest) {
+		il2cpp_field_get_value(instance, this, dest);
+	}
+	template<typename T = Il2CppObject*> T GetValueObject(Il2CppObject* instance) {
+		return (T)il2cpp_field_get_value_object(this, instance);
+	}
+};
+
 struct MethodInfo
 {
 	uintptr_t methodPointer;
@@ -695,7 +707,7 @@ namespace il2cpp_symbols
 	Il2CppClass* get_nested_class(Il2CppClass* klass, const char* nestedClassName);
 
 	// @param pIncludedParentCount: [In] how many parent gameobjects' names should be included, NULL as 0; [Out] how many names are actually used, only returns when not NULL
-	std::string get_unity_gameobject_name(Il2CppObject* obj, bool excludeThisName = false, __inout_opt int* pIncludedParentCount = nullptr);
+	std::string get_unity_gameobject_fullname(Il2CppObject* obj, bool excludeThisName = false, __inout_opt int* pIncludedParentCount = nullptr);
 }
 
 namespace il2cpp_symbols_logged {

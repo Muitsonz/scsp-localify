@@ -209,7 +209,7 @@ struct UnitIdol {
 	void LoadJson(const char* json);
 };
 
-namespace managed {
+namespace managed::MagicaCloth2 {
 	struct InertiaConstraintSerializeData : Il2CppObject {
 		// Transform
 		void* anchor;
@@ -239,6 +239,42 @@ namespace managed {
 		int32_t teleportMode;
 		float teleportDistance;
 		float teleportRotation;
+	};
+
+	struct CurveSerializeData : Il2CppObject {
+		float value;
+		bool useCurve;
+		// AnimationCurve
+		void* curve;
+	};
+	static_assert(offsetof(CurveSerializeData, value) == 0x10);
+	static_assert(offsetof(CurveSerializeData, useCurve) == 0x14);
+	static_assert(offsetof(CurveSerializeData, curve) == 0x18);
+
+	struct CheckSliderSerializeData : Il2CppObject {
+		float value;
+		bool use;
+	};
+	static_assert(offsetof(CheckSliderSerializeData, value) == 0x10);
+	static_assert(offsetof(CheckSliderSerializeData, use) == 0x14);
+
+	struct SpringConstraintSerializeData : Il2CppObject {
+		bool useSpring;
+		float springPower;
+		float limitDistance;
+		float normalLimitRatio;
+		float springNoise;
+	};
+	static_assert(offsetof(SpringConstraintSerializeData, useSpring) == 0x10);
+	static_assert(offsetof(SpringConstraintSerializeData, springPower) == 0x14);
+	static_assert(offsetof(SpringConstraintSerializeData, limitDistance) == 0x18);
+	static_assert(offsetof(SpringConstraintSerializeData, normalLimitRatio) == 0x1C);
+	static_assert(offsetof(SpringConstraintSerializeData, springNoise) == 0x20);
+
+	struct BodyParamFloatProperty : Il2CppObject {
+		bool IsEnable;
+		float MinValue;
+		float MaxValue;
 	};
 }
 
@@ -298,11 +334,7 @@ extern bool g_extract_asset_renderer;
 extern bool g_extract_asset_sprite;
 extern bool g_extract_asset_texture2d;
 extern bool g_extract_asset_log_unknown_asset;
-extern bool g_override_magicacloth_inertia;
-extern float g_magicacloth_anchorInertia;
-extern float g_magicacloth_worldInertia;
-extern float g_magicacloth_localInertia;
-extern float g_magicacloth_movementInertiaSmoothing;
+extern bool g_override_magicacloth;
 
 
 namespace tools {

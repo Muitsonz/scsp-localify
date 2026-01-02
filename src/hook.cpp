@@ -2813,7 +2813,7 @@ namespace
 
 	void ModifyMagicaCloth(Il2CppObject* cloth) {
 		auto name = il2cpp_symbols::get_unity_gameobject_fullname(cloth);
-		PRINT(name);
+		std::cout << "ModifyMagicaCloth: " << name << std::endl;
 
 		static auto klass_MagicaCloth = MAGICACLOTH_GET_CLASS("MagicaCloth");
 		static auto klass_ClothSerializeData = MAGICACLOTH_GET_CLASS("ClothSerializeData");
@@ -2826,6 +2826,7 @@ namespace
 		auto sdata = field_MagicaCloth_serializeData->GetValueObject(cloth);
 
 		static auto field_ClothSerializeData_damping = klass_ClothSerializeData->GetField("damping");
+
 		auto damping = field_ClothSerializeData_damping->GetValueObject<managed::MagicaCloth2::CurveSerializeData*>(sdata);
 		damping->value = 0.01f;
 
@@ -2864,12 +2865,11 @@ namespace
 	}
 
 	HOOK_ORIG_TYPE MagicaClothController_get_Inertia_orig;
-	void* MagicaClothController_get_Inertia_hook(void* _this) {
-		auto value = HOOK_CAST_CALL(
-			managed::MagicaCloth2::BodyParamFloatProperty*,
-			MagicaClothController_get_Inertia
-		)(_this);
-		if (g_override_magicacloth) {
+	void* MagicaClothController_get_Inertia_hook(void* _this, MethodInfo* mi) {
+		auto value = (managed::MagicaCloth2::BodyParamFloatProperty*)HOOK_CAST_CALL(void*, MagicaClothController_get_Inertia)(_this);
+		if (g_override_magicacloth && mi->IsName("get_Inertia")) {
+			printf("> dump MagicaClothController_get_Inertia_hook|value\n");
+			debug::DumpRelationMemoryHex(value, 32);
 			value->MinValue = 1.0f;
 			value->MaxValue = 1.0f;
 		}
@@ -2877,12 +2877,11 @@ namespace
 	}
 
 	HOOK_ORIG_TYPE MagicaClothController_get_Radius_orig;
-	void* MagicaClothController_get_Radius_hook(void* _this) {
-		auto value = HOOK_CAST_CALL(
-			managed::MagicaCloth2::BodyParamFloatProperty*,
-			MagicaClothController_get_Radius
-		)(_this);
-		if (g_override_magicacloth) {
+	void* MagicaClothController_get_Radius_hook(void* _this, MethodInfo* mi) {
+		auto value = (managed::MagicaCloth2::BodyParamFloatProperty*)HOOK_CAST_CALL(void*, MagicaClothController_get_Radius)(_this);
+		if (g_override_magicacloth && mi->IsName("get_Radius")) {
+			printf("> dump MagicaClothController_get_Radius_hook|value\n");
+			debug::DumpRelationMemoryHex(value, 32);
 			value->MinValue = 0.002f;
 			value->MaxValue = 0.028f;
 		}

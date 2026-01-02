@@ -49,6 +49,7 @@
 #include <safetyhook.hpp>
 #define HOOK_ORIG_TYPE SafetyHookInline
 #define HOOK_GET_ORIG(_name_) (_name_##_orig.original<void*>())
+// _ret_type_ should follow the function's signature, or minhook side will report error
 #define HOOK_CAST_CALL(_ret_type_, _name_) _name_##_orig.call<_ret_type_>
 #else
 #define HOOK_ORIG_TYPE void*
@@ -58,6 +59,7 @@
 
 
 #define PRINT(var) std::cout << #var << " = " << var << std::endl;
+#define PRINT_ONCE(_txt_var_) static bool __print_once_##_txt_var_ = [] { PRINT(_txt_var_); return true; }();
 LONG WINAPI seh_filter(EXCEPTION_POINTERS* ep);
 #define __EXCEPT(strContext) __except (seh_filter(GetExceptionInformation())) { std::cout << "SEH exception detected in '" << strContext << "'.\n"; }
 

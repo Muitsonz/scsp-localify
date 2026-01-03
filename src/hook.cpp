@@ -2866,7 +2866,7 @@ namespace
 
 	HOOK_ORIG_TYPE MagicaClothController_get_Inertia_orig;
 	void* MagicaClothController_get_Inertia_hook(void* _this, MethodInfo* mi) {
-		auto value = (managed::MagicaCloth2::BodyParamFloatProperty*)HOOK_CAST_CALL(void*, MagicaClothController_get_Inertia)(_this);
+		auto value = (managed::MagicaCloth2::BodyParamFloatProperty*)HOOK_CAST_CALL(void*, MagicaClothController_get_Inertia)(_this, mi);
 		if (g_override_magicacloth && mi->IsName("get_Inertia")) {
 			printf("> dump MagicaClothController_get_Inertia_hook|value\n");
 			debug::DumpRelationMemoryHex(value, 32);
@@ -2878,7 +2878,7 @@ namespace
 
 	HOOK_ORIG_TYPE MagicaClothController_get_Radius_orig;
 	void* MagicaClothController_get_Radius_hook(void* _this, MethodInfo* mi) {
-		auto value = (managed::MagicaCloth2::BodyParamFloatProperty*)HOOK_CAST_CALL(void*, MagicaClothController_get_Radius)(_this);
+		auto value = (managed::MagicaCloth2::BodyParamFloatProperty*)HOOK_CAST_CALL(void*, MagicaClothController_get_Radius)(_this, mi);
 		if (g_override_magicacloth && mi->IsName("get_Radius")) {
 			printf("> dump MagicaClothController_get_Radius_hook|value\n");
 			debug::DumpRelationMemoryHex(value, 32);

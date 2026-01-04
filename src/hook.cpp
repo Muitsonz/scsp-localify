@@ -2151,11 +2151,13 @@ namespace
 	}
 
 	HOOK_ORIG_TYPE RunwayEventStartData_ctor_orig;
-	void RunwayEventStartData_ctor_hook(void* _this, void* mvStage, void* onStageIdols, void* methodInfo) {
-		if (0 == strcmp("UnitIdolWithMstCostume[]", ((Il2CppObject*)onStageIdols)->klass->name)) {
-			ModifyOnStageIdols(onStageIdols);
+	void RunwayEventStartData_ctor_hook(void* _this, void* mvStage, void* onStageIdols) {
+		if (onStageIdols != nullptr) {
+			if (0 == strcmp("UnitIdolWithMstCostume[]", ((Il2CppObject*)onStageIdols)->klass->name)) {
+				ModifyOnStageIdols(onStageIdols);
+			}
 		}
-		HOOK_CAST_CALL(void, RunwayEventStartData_ctor)(_this, mvStage, onStageIdols, methodInfo);
+		HOOK_CAST_CALL(void, RunwayEventStartData_ctor)(_this, mvStage, onStageIdols);
 	}
 
 

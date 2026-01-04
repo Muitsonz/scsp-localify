@@ -2869,7 +2869,6 @@ namespace
 		auto value = (managed::MagicaCloth2::BodyParamFloatProperty*)HOOK_CAST_CALL(void*, MagicaClothController_get_Inertia)(_this, mi);
 		if (g_override_magicacloth && mi->IsName("get_Inertia")) {
 			printf("> dump MagicaClothController_get_Inertia_hook|value\n");
-			debug::DumpRelationMemoryHex(value, 32);
 			value->MinValue = 1.0f;
 			value->MaxValue = 1.0f;
 		}
@@ -2881,11 +2880,34 @@ namespace
 		auto value = (managed::MagicaCloth2::BodyParamFloatProperty*)HOOK_CAST_CALL(void*, MagicaClothController_get_Radius)(_this, mi);
 		if (g_override_magicacloth && mi->IsName("get_Radius")) {
 			printf("> dump MagicaClothController_get_Radius_hook|value\n");
-			debug::DumpRelationMemoryHex(value, 32);
 			value->MinValue = 0.002f;
 			value->MaxValue = 0.028f;
 		}
 		return value;
+	}
+
+	HOOK_ORIG_TYPE MagicaClothController_Awake_orig;
+	void MagicaClothController_Awake_hook(Il2CppObject* _this) {
+		printf("MagicaClothController_Awake_hook\n");
+		HOOK_CAST_CALL(void, MagicaClothController_Awake)(_this);
+
+		auto klass = il2cpp_object_get_class(_this);
+		auto method_get_Inertia = il2cpp_class_get_method_from_name(klass, "get_Inertia", 0);
+		if (method_get_Inertia != nullptr) {
+			auto inertia = method_get_Inertia->Invoke<managed::MagicaCloth2::BodyParamFloatProperty*>(_this, {});
+			PRINT(inertia->MinValue);
+			PRINT(inertia->MaxValue);
+			inertia->MinValue = 1.0f;
+			inertia->MaxValue = 1.0f;
+		}
+		auto method_get_Radius = il2cpp_class_get_method_from_name(klass, "get_Radius", 0);
+		if (method_get_Radius != nullptr) {
+			auto radius = method_get_Radius->Invoke<managed::MagicaCloth2::BodyParamFloatProperty*>(_this, {});
+			PRINT(radius->MinValue);
+			PRINT(radius->MaxValue);
+			radius->MinValue = 0.002f;
+			radius->MaxValue = 0.028f;
+		}
 	}
 
 
@@ -3401,6 +3423,21 @@ namespace
 			"MagicaClothController", "get_Radius", 0
 		);
 
+		auto BodyParamFloatProperty__ctor_addr = il2cpp_symbols_logged::get_method_pointer(
+			"PRISM.Module.CustomMagicaCloth.dll", "PRISM.Module.CustomMagicaCloth",
+			"BodyParamFloatProperty", ".ctor", 0
+		);
+
+		auto BodyParamFloatProperty__getValue_addr = il2cpp_symbols_logged::get_method_pointer(
+			"PRISM.Module.CustomMagicaCloth.dll", "PRISM.Module.CustomMagicaCloth",
+			"BodyParamFloatProperty", "_getValue", 1
+		);
+
+		auto MagicaClothController_Awake_addr = il2cpp_symbols_logged::get_method_pointer(
+			"PRISM.Module.CustomMagicaCloth.dll", "PRISM.Module.CustomMagicaCloth",
+			"MagicaClothController", "Awake", 0
+		);
+
 #pragma endregion
 		ADD_HOOK(SetResolution, "SetResolution at %p");
 		ADD_HOOK_1(StoryExtensions_IsLocked);
@@ -3470,6 +3507,9 @@ namespace
 		ADD_HOOK_1(MagicaCloth_SetParameterChange);
 		ADD_HOOK_1(MagicaClothController_get_Inertia);
 		ADD_HOOK_1(MagicaClothController_get_Radius);
+		//ADD_HOOK_1(BodyParamFloatProperty__ctor);
+		//ADD_HOOK_1(BodyParamFloatProperty__getValue);
+		ADD_HOOK_1(MagicaClothController_Awake);
 
 		tools::AddNetworkingHooks();
 

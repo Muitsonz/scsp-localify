@@ -44,8 +44,8 @@ namespace SCGUILoop {
 		struct { float x, y, z; } pos = { 0,0,0 };
 		struct { float x, y, z; } lookAt = { 0,0,0 };
 		bool overwriteClipPlane = false;
-		float nearClipPlane;
-		float farClipPlane;
+		float nearClipPlane = 0;
+		float farClipPlane = 2;
 	};
 
 	rapidjson::Value SerializeFreeCamState(const FreeCamState& state, rapidjson::Document::AllocatorType& allocator) {
@@ -406,31 +406,25 @@ namespace SCGUILoop {
 			ImGui::SameLine();
 			HELP_TOOLTIP("(?)", "保存服装编辑信息并在MV播放时替换。\nSave costumes changing data and Replace when MV starts.");
 
-			if (g_save_and_replace_costume_changes) {
-				ImGui::Indent(30);
-				ImGui::Checkbox("Override MV unit idols", &g_overrie_mv_unit_idols);
-				ImGui::SameLine();
-				HELP_TOOLTIP("(?)", "在操作窗口中保存用于替换MV播放时的角色信息。\nSave idols' data in control panel to replace them when playing MV.");
+			ImGui::Checkbox("Override MV unit idols", &g_overrie_mv_unit_idols);
+			ImGui::SameLine();
+			HELP_TOOLTIP("(?)", "在操作窗口中保存用于替换MV播放时的角色信息。\nSave idols' data in control panel to replace them when playing MV.");
 
-				ImGui::Checkbox("Show hidden costumes (override IsAllDressOrdered)", &g_show_hidden_costumes);
-				ImGui::SameLine();
-				HELP_TOOLTIP("(?)", "在进入换装窗口前勾选有效。\nActive only when checked before entering costume changing view.");
-				ImGui::Unindent(30);
-			}
+			ImGui::Checkbox("Show hidden costumes (override IsAllDressOrdered)", &g_show_hidden_costumes);
+			ImGui::SameLine();
+			HELP_TOOLTIP("(?)", "在进入换装窗口前勾选有效。\nActive only when checked before entering costume changing view.");
 
 			ImGui::Checkbox("Enable VocalSeparatedOn forcibly", &g_override_isVocalSeparatedOn);
 			ImGui::SameLine();
 			HELP_TOOLTIP("(?)", "若最终播放MV时的歌曲或所选角色不支持分段演唱则会导致卡死或崩溃。\nGame will freeze or crash if finally selected song or idols don't support separated vocal.");
 
-			ImGui::Checkbox("[Legacy] Live Allow Same Idol (Dangerous)", &g_allow_same_idol);
+			ImGui::Checkbox("Enable Character Parameter Editor", &g_enable_chara_param_edit);
 			ImGui::SameLine();
-			HELP_TOOLTIP("(?)", "影分身术！\n允许在 Live 中选择同一人。\n（此模式的编组数据会上传，请小心你的号）")
+			HELP_TOOLTIP("(?)", "启用角色身体参数编辑器");
 
-				ImGui::Checkbox("Enable Character Parameter Editor", &g_enable_chara_param_edit);
+			ImGui::Checkbox("Unlock Stories (Dangerous)", &g_unlock_PIdol_and_SChara_events);
 			ImGui::SameLine();
-			HELP_TOOLTIP("(?)", "启用角色身体参数编辑器")
-
-				ImGui::Checkbox("Unlock Stories", &g_unlock_PIdol_and_SChara_events);
+			HELP_TOOLTIP("(?)", "阅读故事内容时会上传故事ID，理论上可追查非法数据。\nStory id will be uploaded when reading, and the invalid data can be tracked technically.");
 
 			if (ImGui::CollapsingHeader("Resolution Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
 				ImGui::Text("Window Resolution Settings");
@@ -496,17 +490,15 @@ namespace SCGUILoop {
 
 				if (ImGui::CollapsingHeader("Free Camera", ImGuiTreeNodeFlags_DefaultOpen)) {
 					ImGui::Checkbox("Enable Free Camera", &g_enable_free_camera);
-					ImGui::Checkbox("[Legacy] Re-enable ClipPlane overriding", &g_reenable_clipPlane);
-					ImGui::SameLine();
-					HELP_TOOLTIP("(?)", "Re-enable the modification of nearClipPlane & farClipPlane like old versions.");
+					ImGui::Checkbox("Enable ClipPlane overriding", &g_reenable_clipPlane);
 					if (g_reenable_clipPlane) {
 						ImGui::Dummy(ImVec2(40, 0));
 						ImGui::SameLine();
-						ImGui::InputFloat("near clip plane", &g_nearClipPlane, 0.001f, 0.01f);
+						ImGui::InputFloat("near clip plane", &g_nearClipPlane);
 
 						ImGui::Dummy(ImVec2(40, 0));
 						ImGui::SameLine();
-						ImGui::InputFloat("far clip plane", &g_farClipPlane, 1, 10);
+						ImGui::InputFloat("far clip plane", &g_farClipPlane);
 					}
 					INPUT_AND_SLIDER_FLOAT("Move Speed", &BaseCamera::moveStep, 0.0f, 0.5f);
 					INPUT_AND_SLIDER_FLOAT("Mouse Speed", &g_free_camera_mouse_speed, 0.0f, 100.0f);
@@ -669,11 +661,15 @@ namespace SCGUILoop {
 
 			if (ImGui::CollapsingHeader("MagicaCloth"), ImGuiTreeNodeFlags_DefaultOpen) {
 				ImGui::Checkbox("Override MagicaCloth", &g_magicacloth_override);
+				ImGui::SameLine();
+				HELP_TOOLTIP("(?)", "数据在模型加载时被更新。\nData is only updated when loading models.");
+
 				ImGui::Text("Show MagicaCloth logs");
 				ImGui::SameLine();
 				ImGui::Checkbox("(cloth)", &g_magicacloth_output_cloth);
 				ImGui::SameLine();
 				ImGui::Checkbox("(controller)", &g_magicacloth_output_controller);
+
 				if (g_magicacloth_override) {
 					INPUT_AND_SLIDER_FLOAT("Inertia.min", &g_magicacloth_inertia_min, 0.0f, 1.0f);
 					INPUT_AND_SLIDER_FLOAT("Inertia.max", &g_magicacloth_inertia_max, 0.0f, 1.0f);
@@ -719,6 +715,14 @@ namespace SCGUILoop {
 				}
 			}
 
+			if (ImGui::CollapsingHeader("Legacy", ImGuiTreeNodeFlags_None)) {
+				ImGui::Checkbox("Live Allow Same Idol (Dangerous)", &g_allow_same_idol);
+				ImGui::SameLine();
+				HELP_TOOLTIP("(?)", "影分身术！\n允许在 Live 中选择同一人。\n（此模式的编组数据会上传，请小心你的号）");
+				ImGui::SameLine();
+				HELP_TOOLTIP("(?)", "This feature can be replaced by 'Override MV unit idols'.");
+			}
+
 			if (ImGui::CollapsingHeader("Devs", ImGuiTreeNodeFlags_None)) {
 #ifdef __TOOL_HOOK_NETWORKING__
 				ImGui::Checkbox("Output networking calls", &tools::output_networking_calls);
@@ -736,6 +740,6 @@ namespace SCGUILoop {
 		ImGui::End();
 		if (g_enable_chara_param_edit) charaParamEditLoop();
 		if (g_save_and_replace_costume_changes) savedCostumeDataLoop();
-		if (g_save_and_replace_costume_changes && g_overrie_mv_unit_idols) overrideMvUnitIdolLoop();
+		if (g_overrie_mv_unit_idols) overrideMvUnitIdolLoop();
 	}
 }

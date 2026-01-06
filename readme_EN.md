@@ -31,6 +31,7 @@ iM@S SCSP localify plugin.
   - Allow Same Idol Appearance
   - Edit on-stage idols manually, allowing to select unlocked idols
 - Real-time Modification of Character Body Parameters, Adjust Height, Head, Chest, Arm, and Palm Size **(Modify in GUI)**
+- Runtime texture extracting and replacing
 
 
 
@@ -139,6 +140,32 @@ About JSON value: For key bindings, two types of values are acceptable:
 - In "Override MvUnit Idols" sub-window, clicking data to edit JSON data manually. (Note: When editing `CharaId` manually, it's suggested to use `1` (the default) for `HairId` to avoid freezing)
 
 
+# Magica Cloth Settings
+
+All relative settings can be adjusted in in-game GUI, all these values inside configuration file `scsp-config.json` only affect initialization.
+
+Detailed descriptions of properties can be checked at the official document: https://magicasoft.jp/mc2_about/
+
+
+| Configuration Item                  | Default Value                |
+| ----------------------------------- | ---------------------------- |
+| magicacloth_override                | `false`                      |
+| magicacloth_inertia_min †           | `1.0f`                       |
+| magicacloth_inertia_max †           | `1.0f`                       |
+| magicacloth_radius_min †            | `0.002f`                     |
+| magicacloth_radius_max †            | `0.028f`                     |
+| magicacloth_damping                 | `0.01f`                      |
+| magicacloth_movementSpeedLimit      | `10.0f`                      |
+| magicacloth_rotationSpeedLimit      | `1440.0f`                    |
+| magicacloth_localMovementSpeedLimit | `10.0f`                      |
+| magicacloth_localRotationSpeedLimit | `1440.0f`                    |
+| magicacloth_particleSpeedLimit      | `40.0f`                      |
+| magicacloth_limitAngle              | `90.0f`                      |
+| magicacloth_springLimitDistance     | `0.5f`                       |
+| magicacloth_springNoise             | `0.1f`                       |
+
+† Properties `Inertia` and `Radius` come from `MagicaClothController`
+
 
 # How to Localize
 
@@ -173,6 +200,11 @@ After logging into the game, go to the story reading interface, press `ctrl` + `
 
 ### Lyrics and Another Part of UI Text Dump
 Set `dumpUntransLyrics` and `dumpUntransLocal2` in `scsp-config.json` to `true`, then open the game. The plugin will continuously dump untranslated parts into Json in real time.
+
+
+# Runtime texture extracting and replacing
+- Extracting: After checking option `Extract assets of：` and filters in GUI, textures will be extracted to `TextureDump` in the same directory to the program.
+- Replacing: Textures put inside directory `scsp_localify\textures` with exactly same names of extracted will be loaded and replaced automatically.
 
 
 # How to build

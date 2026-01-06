@@ -31,6 +31,7 @@
   - 允许相同偶像登场
   - 手动编辑登场偶像，可以选择未解锁偶像
 - 角色身体参数实时修改，可修改 身高、头部、胸部、手臂、手掌 大小 **(在 GUI 中修改)**
+- 运行时模型贴图提取和替换
 
 
 
@@ -139,6 +140,32 @@ JSON值说明：对于按键设置接受以下两种类型的值：
 - "Override MvUnit Idols" 子窗口中可以通过点击数据直接编辑JSON数据进行手动修改（备注：当直接编辑`CharaId`时，建议使用`1`（默认）作为`HairId`的值以避免游戏卡住）
 
 
+# Magica Cloth 相关设置
+
+所有相关设置均可在游戏中通过GUI进行修改，以下在 `scsp-config.json` 配置文件中的值只影响初始化。
+
+具体属性说明可参考官方文档：https://magicasoft.jp/mc2_about/
+
+| 配置项                               | 默认值及说明                   |
+| ----------------------------------- | ---------------------------- |
+| magicacloth_override                | `false`                      |
+| magicacloth_inertia_min †           | `1.0f`                       |
+| magicacloth_inertia_max †           | `1.0f`                       |
+| magicacloth_radius_min †            | `0.002f`                     |
+| magicacloth_radius_max †            | `0.028f`                     |
+| magicacloth_damping                 | `0.01f`                      |
+| magicacloth_movementSpeedLimit      | `10.0f`                      |
+| magicacloth_rotationSpeedLimit      | `1440.0f`                    |
+| magicacloth_localMovementSpeedLimit | `10.0f`                      |
+| magicacloth_localRotationSpeedLimit | `1440.0f`                    |
+| magicacloth_particleSpeedLimit      | `40.0f`                      |
+| magicacloth_limitAngle              | `90.0f`                      |
+| magicacloth_springLimitDistance     | `0.5f`                       |
+| magicacloth_springNoise             | `0.1f`                       |
+
+† 此处`Inertia`和`Radius`属性来自`MagicaClothController`
+
+
 # 如何汉化
 
 - 将 dumps 目录内的 Json 文件汉化后，放进 `scsp_localify` 目录即可。
@@ -174,6 +201,12 @@ JSON值说明：对于按键设置接受以下两种类型的值：
 
 ### 歌词和另一部分 UI 文本 dump
 将 `scsp-config.json` 内 `dumpUntransLyrics` 和 `dumpUntransLocal2` 设置为 `true`，然后打开游戏。插件会实时将未翻译的部分 dump 到 Json 中。
+
+
+# 运行时模型贴图提取和替换
+
+- 提取：在GUI中勾选 `Extract assets of：` 以及相应的筛选器后，会在程序目录的 `TextureDump` 文件夹下分类存放提取的纹理。
+- 替换：在程序的 `scsp_localify\textures` 文件夹内放置与提取得到的纹理相同名称的图片会自动在启动时加载并替换。
 
 
 # 如何编译

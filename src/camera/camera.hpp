@@ -4,6 +4,7 @@
 namespace SCCamera {
 	extern BaseCamera::Camera baseCamera;
 	extern Vector2Int_t currRenderResolution;
+	extern std::map<int, int> CameraControlKeyMapping;
 
 	void onKillFocus();
 	void initCameraSettings();

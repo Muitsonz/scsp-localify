@@ -31,6 +31,7 @@ iM@S SCSP localify plugin.
   - Allow Same Idol Appearance
   - Edit on-stage idols manually, allowing to select unlocked idols
 - Real-time Modification of Character Body Parameters, Adjust Height, Head, Chest, Arm, and Palm Size **(Modify in GUI)**
+- Runtime texture extracting and replacing
 
 
 
@@ -81,6 +82,8 @@ iM@S SCSP localify plugin.
 
 # Free Camera Instructions
 
+> The following is the default key binding, and can be customized by config files.
+
 - Set `enable` under `baseFreeCamera` in `scsp-config.json` to `true`.
 - Scope of application: All 3D scenes. Including but not limited to homepage, story, Live.
 > With the unity engine updating in game v2.6.1, there're still unfixed bugs about free camera feature now.
@@ -90,7 +93,7 @@ iM@S SCSP localify plugin.
 ## Free Camera Operation Method
 
 - Movement: `W`, `S`, `A`, `D`
-- Ascend: `Space`, Descend: `Ctrl`
+- Ascend: `Space` (overwritten as `Alt` in config files distributed after plugin v1.3.6), Descend: `Ctrl`
 - Reset camera: `R`
 
 - Camera Rotation: 
@@ -103,6 +106,32 @@ iM@S SCSP localify plugin.
   - Or mouse scroll wheel
 
 
+ ## Customizing free camera key bindings
+ - All config items are also located in the `scsp-config.json` file.
+ - As the update of game v2.9.0 introduced some key bindings, the default camera ascending key binding `Space` is bound to `Alt` in the config files distributed after plugin v1.3.6. But if the config file isn't edited, it keeps `Space` as unchanged.
+
+| Configuration Item          | Default Value             |
+| --------------------------- | ------------------------- |
+| key_w_camera_forward        | `W`                       |
+| key_s_camera_back           | `S`                       |
+| key_a_camera_left           | `A`                       |
+| key_d_camera_right          | `D`                       |
+| key_ctrl_camera_down        | `17` (ctrl)               |
+| key_space_camera_up         | `18` (alt)                |
+| key_up_cameralookat_up      | `38` (↑)                  |
+| key_down_cameralookat_down  | `40` (↓)                  |
+| key_left_cameralookat_left  | `37` (←)                  |
+| key_right_cameralookat_right| `39` (→)                  |
+| key_q_camera_fov_increase   | `Q`                       |
+| key_e_camera_fov_decrease   | `E`                       |
+| key_r_camera_reset          | `R`                       |
+| key_192_camera_mouseMove    | `192` (`` ` ``, backtick) |
+
+
+About JSON value: For key bindings, two types of values are acceptable:
+- `char[1]` single character string, wrapped by double quotes, to express the letter key, like `"W"` for key W
+- `int` an integer to bind to a windows virtual key directly, see also https://learn.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
+
 
 # Live MV Instructions
 
@@ -110,6 +139,32 @@ iM@S SCSP localify plugin.
 - When `Save & Replace costume changes` is checked and `Override MV unit idols` is checked, the last costume data can be saved by clicking the `Slot X` buttons in the "Override MvUnit Idols" sub-window; different slots can be used to record the same idol to achieve multiple appearances of the same idol with different costumes, and unrecorded slots will inherit the original data of the idols in the selected live unit.
 - In "Override MvUnit Idols" sub-window, clicking data to edit JSON data manually. (Note: When editing `CharaId` manually, it's suggested to use `1` (the default) for `HairId` to avoid freezing)
 
+
+# Magica Cloth Settings
+
+All relative settings can be adjusted in in-game GUI, all these values inside configuration file `scsp-config.json` only affect initialization.
+
+Detailed descriptions of properties can be checked at the official document: https://magicasoft.jp/mc2_about/
+
+
+| Configuration Item                  | Default Value                |
+| ----------------------------------- | ---------------------------- |
+| magicacloth_override                | `false`                      |
+| magicacloth_inertia_min †           | `1.0f`                       |
+| magicacloth_inertia_max †           | `1.0f`                       |
+| magicacloth_radius_min †            | `0.002f`                     |
+| magicacloth_radius_max †            | `0.028f`                     |
+| magicacloth_damping                 | `0.01f`                      |
+| magicacloth_movementSpeedLimit      | `10.0f`                      |
+| magicacloth_rotationSpeedLimit      | `1440.0f`                    |
+| magicacloth_localMovementSpeedLimit | `10.0f`                      |
+| magicacloth_localRotationSpeedLimit | `1440.0f`                    |
+| magicacloth_particleSpeedLimit      | `40.0f`                      |
+| magicacloth_limitAngle              | `90.0f`                      |
+| magicacloth_springLimitDistance     | `0.5f`                       |
+| magicacloth_springNoise             | `0.1f`                       |
+
+† Properties `Inertia` and `Radius` come from `MagicaClothController`
 
 
 # How to Localize
@@ -145,6 +200,11 @@ After logging into the game, go to the story reading interface, press `ctrl` + `
 
 ### Lyrics and Another Part of UI Text Dump
 Set `dumpUntransLyrics` and `dumpUntransLocal2` in `scsp-config.json` to `true`, then open the game. The plugin will continuously dump untranslated parts into Json in real time.
+
+
+# Runtime texture extracting and replacing
+- Extracting: After checking option `Extract assets of：` and filters in GUI, textures will be extracted to `TextureDump` in the same directory to the program.
+- Replacing: Textures put inside directory `scsp_localify\textures` with exactly same names of extracted will be loaded and replaced automatically.
 
 
 # How to build

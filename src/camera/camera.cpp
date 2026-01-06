@@ -2,24 +2,11 @@
 #include "camera/baseCamera.hpp"
 #include <mhotkey.hpp>
 
-#define KEY_W  87
-#define KEY_S  83
-#define KEY_A  65
-#define KEY_D  68
-#define KEY_R  82
-#define KEY_UP  38
-#define KEY_DOWN  40
-#define KEY_LEFT  37
-#define KEY_RIGHT  39
-#define KEY_CTRL  17
-#define KEY_SHIFT  16
-#define KEY_ALT  18
-#define KEY_SPACE  32
-
 
 namespace SCCamera {
 	BaseCamera::Camera baseCamera{};
 	Vector2Int_t currRenderResolution{ -1, -1 };
+	std::map<int, int> CameraControlKeyMapping{};
 
 	bool rMousePressFlg = false;
 
@@ -159,7 +146,7 @@ namespace SCCamera {
 
 		std::thread([]() {
 			Sleep(50);
-			
+
 			}).detach();
 	}
 
@@ -193,44 +180,49 @@ namespace SCCamera {
 
 	void on_cam_rawinput_keyboard(int message, int key) {
 		// printf("key %d - %d\n", message, key);
-		if (message == WM_KEYDOWN || message == WM_KEYUP) {
-			switch (key) {
+		if (message == WM_KEYDOWN || message == WM_KEYUP || message == WM_SYSKEYDOWN || message == WM_SYSKEYUP) {
+			auto mapped = CameraControlKeyMapping.find(key);
+			if (mapped == CameraControlKeyMapping.end()) {
+				return;
+			}
+			bool isKeyDown = message == WM_KEYDOWN || message == WM_SYSKEYDOWN;
+			switch (mapped->second) {
 			case KEY_W:
-				cameraMoveState.w = message == WM_KEYDOWN ? true : false; break;
+				cameraMoveState.w = isKeyDown; break;
 			case KEY_S:
-				cameraMoveState.s = message == WM_KEYDOWN ? true : false; break;
+				cameraMoveState.s = isKeyDown; break;
 			case KEY_A:
-				cameraMoveState.a = message == WM_KEYDOWN ? true : false; break;
+				cameraMoveState.a = isKeyDown; break;
 			case KEY_D:
-				cameraMoveState.d = message == WM_KEYDOWN ? true : false; break;
+				cameraMoveState.d = isKeyDown; break;
 			case KEY_CTRL:
-				cameraMoveState.ctrl = message == WM_KEYDOWN ? true : false; break;
+				cameraMoveState.ctrl = isKeyDown; break;
 			case KEY_SPACE:
-				cameraMoveState.space = message == WM_KEYDOWN ? true : false; break;
+				cameraMoveState.space = isKeyDown; break;
 			case KEY_UP:
-				cameraMoveState.up = message == WM_KEYDOWN ? true : false; break;
+				cameraMoveState.up = isKeyDown; break;
 			case KEY_DOWN:
-				cameraMoveState.down = message == WM_KEYDOWN ? true : false; break;
+				cameraMoveState.down = isKeyDown; break;
 			case KEY_LEFT:
-				cameraMoveState.left = message == WM_KEYDOWN ? true : false; break;
+				cameraMoveState.left = isKeyDown; break;
 			case KEY_RIGHT:
-				cameraMoveState.right = message == WM_KEYDOWN ? true : false; break;
-			case 'Q':
-				cameraMoveState.q = message == WM_KEYDOWN ? true : false; break;
-			case 'E':
-				cameraMoveState.e = message == WM_KEYDOWN ? true : false; break;
-			case 'I':
-				cameraMoveState.i = message == WM_KEYDOWN ? true : false; break;
-			case 'K':
-				cameraMoveState.k = message == WM_KEYDOWN ? true : false; break;
-			case 'J':
-				cameraMoveState.j = message == WM_KEYDOWN ? true : false; break;
-			case 'L':
-				cameraMoveState.l = message == WM_KEYDOWN ? true : false; break;
-			case 'R': {
+				cameraMoveState.right = isKeyDown; break;
+			case KEY_Q:
+				cameraMoveState.q = isKeyDown; break;
+			case KEY_E:
+				cameraMoveState.e = isKeyDown; break;
+				//case 'I':
+				//	cameraMoveState.i = isKeyDown; break;
+				//case 'K':
+				//	cameraMoveState.k = isKeyDown; break;
+				//case 'J':
+				//	cameraMoveState.j = isKeyDown; break;
+				//case 'L':
+				//	cameraMoveState.l = isKeyDown; break;
+			case KEY_R: {
 				if (message == WM_KEYDOWN) reset_camera();
 			}; break;
-			case 192: {
+			case KEY_192: {
 				if (message == WM_KEYDOWN) mouseMove(0, 0, rMousePressFlg ? 2 : 1);
 			}; break;
 			default: break;

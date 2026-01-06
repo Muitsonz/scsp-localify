@@ -1836,34 +1836,35 @@ namespace
 		return HOOK_CAST_CALL(void*, DepthOfFieldClip_CreatePlayable)(retstr, _this, graph, go, mtd);
 	}
 
+	// obsolete hook removed
 	// HDR Live
-	HOOK_ORIG_TYPE PostProcess_DepthOfFieldClip_CreatePlayable_orig;
-	void PostProcess_DepthOfFieldClip_CreatePlayable_hook(void* retstr, void* _this, void* graph, void* go, void* mtd) {
+	//HOOK_ORIG_TYPE PostProcess_DepthOfFieldClip_CreatePlayable_orig;
+	//void PostProcess_DepthOfFieldClip_CreatePlayable_hook(void* retstr, void* _this, void* graph, void* go, void* mtd) {
 
-		if (g_enable_free_camera) {
-			static auto DepthOfFieldClip_klass = il2cpp_symbols::get_class("PRISM.Legacy.dll", "UnityEngine.Rendering.Universal.PostProcess", "DepthOfFieldClip");
-			static auto DepthOfFieldClip_behaviour_field = il2cpp_class_get_field_from_name(DepthOfFieldClip_klass, "behaviour");
+	//	if (g_enable_free_camera) {
+	//		static auto DepthOfFieldClip_klass = il2cpp_symbols::get_class("PRISM.Legacy.dll", "UnityEngine.Rendering.Universal.PostProcess", "DepthOfFieldClip");
+	//		static auto DepthOfFieldClip_behaviour_field = il2cpp_class_get_field_from_name(DepthOfFieldClip_klass, "behaviour");
 
-			static auto DepthOfFieldBehaviour_klass = il2cpp_symbols::get_class("PRISM.Legacy.dll", "UnityEngine.Rendering.Universal.PostProcess", "DepthOfFieldBehaviour");
-			static auto DepthOfFieldBehaviour_focusDistance_field = il2cpp_class_get_field_from_name(DepthOfFieldBehaviour_klass, "focusDistance");
-			static auto DepthOfFieldBehaviour_aperture_field = il2cpp_class_get_field_from_name(DepthOfFieldBehaviour_klass, "aperture");
-			static auto DepthOfFieldBehaviour_focalLength_field = il2cpp_class_get_field_from_name(DepthOfFieldBehaviour_klass, "focalLength");
-			auto depthOfFieldBehaviour = il2cpp_symbols::read_field(_this, DepthOfFieldClip_behaviour_field);
-			/*
-			auto focusDistance = il2cpp_symbols::read_field<float>(depthOfFieldBehaviour, DepthOfFieldBehaviour_focusDistance_field);
-			auto aperture = il2cpp_symbols::read_field<float>(depthOfFieldBehaviour, DepthOfFieldBehaviour_aperture_field);
-			auto focalLength = il2cpp_symbols::read_field<float>(depthOfFieldBehaviour, DepthOfFieldBehaviour_focalLength_field);
-			*/
+	//		static auto DepthOfFieldBehaviour_klass = il2cpp_symbols::get_class("PRISM.Legacy.dll", "UnityEngine.Rendering.Universal.PostProcess", "DepthOfFieldBehaviour");
+	//		static auto DepthOfFieldBehaviour_focusDistance_field = il2cpp_class_get_field_from_name(DepthOfFieldBehaviour_klass, "focusDistance");
+	//		static auto DepthOfFieldBehaviour_aperture_field = il2cpp_class_get_field_from_name(DepthOfFieldBehaviour_klass, "aperture");
+	//		static auto DepthOfFieldBehaviour_focalLength_field = il2cpp_class_get_field_from_name(DepthOfFieldBehaviour_klass, "focalLength");
+	//		auto depthOfFieldBehaviour = il2cpp_symbols::read_field(_this, DepthOfFieldClip_behaviour_field);
+	//		/*
+	//		auto focusDistance = il2cpp_symbols::read_field<float>(depthOfFieldBehaviour, DepthOfFieldBehaviour_focusDistance_field);
+	//		auto aperture = il2cpp_symbols::read_field<float>(depthOfFieldBehaviour, DepthOfFieldBehaviour_aperture_field);
+	//		auto focalLength = il2cpp_symbols::read_field<float>(depthOfFieldBehaviour, DepthOfFieldBehaviour_focalLength_field);
+	//		*/
 
-			il2cpp_symbols::write_field(depthOfFieldBehaviour, DepthOfFieldBehaviour_focusDistance_field, 1000.0f);
-			il2cpp_symbols::write_field(depthOfFieldBehaviour, DepthOfFieldBehaviour_aperture_field, 32.0f);
-			il2cpp_symbols::write_field(depthOfFieldBehaviour, DepthOfFieldBehaviour_focalLength_field, 1.0f);
+	//		il2cpp_symbols::write_field(depthOfFieldBehaviour, DepthOfFieldBehaviour_focusDistance_field, 1000.0f);
+	//		il2cpp_symbols::write_field(depthOfFieldBehaviour, DepthOfFieldBehaviour_aperture_field, 32.0f);
+	//		il2cpp_symbols::write_field(depthOfFieldBehaviour, DepthOfFieldBehaviour_focalLength_field, 1.0f);
 
-			// printf("DepthOfFieldClip_CreatePlayable, focusDistance: %f, aperture: %f, focalLength: %f\n", focusDistance, aperture, focalLength);
-		}
+	//		// printf("DepthOfFieldClip_CreatePlayable, focusDistance: %f, aperture: %f, focalLength: %f\n", focusDistance, aperture, focalLength);
+	//	}
 
-		HOOK_CAST_CALL(void, PostProcess_DepthOfFieldClip_CreatePlayable)(retstr, _this, graph, go, mtd);
-	}
+	//	HOOK_CAST_CALL(void, PostProcess_DepthOfFieldClip_CreatePlayable)(retstr, _this, graph, go, mtd);
+	//}
 
 	// 已过时
 	HOOK_ORIG_TYPE Live_SetEnableDepthOfField_orig;
@@ -1883,6 +1884,7 @@ namespace
 		}
 	}
 
+#ifdef __OBSOLETE_HOOK__
 	bool isCancelTryOn = false;
 	HOOK_ORIG_TYPE LiveCostumeChangeView_setTryOnMode_orig;
 	void LiveCostumeChangeView_setTryOnMode_hook(void* _this, void* idol, bool isTryOn) {
@@ -2070,6 +2072,7 @@ namespace
 			// addToDic(cacheAccessoryMap, accessoryDic);  // TODO PRISM.ResourceManagement.ResourceLoader._throwMissingKeyException
 		}
 	}
+#endif
 
 
 	HOOK_ORIG_TYPE CostumeChangeViewModel_ctor_orig;
@@ -2151,11 +2154,13 @@ namespace
 	}
 
 	HOOK_ORIG_TYPE RunwayEventStartData_ctor_orig;
-	void RunwayEventStartData_ctor_hook(void* _this, void* mvStage, void* onStageIdols, void* methodInfo) {
-		if (0 == strcmp("UnitIdolWithMstCostume[]", ((Il2CppObject*)onStageIdols)->klass->name)) {
-			ModifyOnStageIdols(onStageIdols);
+	void RunwayEventStartData_ctor_hook(void* _this, void* mvStage, void* onStageIdols) {
+		if (onStageIdols != nullptr) {
+			if (0 == strcmp("UnitIdolWithMstCostume[]", ((Il2CppObject*)onStageIdols)->klass->name)) {
+				ModifyOnStageIdols(onStageIdols);
+			}
 		}
-		HOOK_CAST_CALL(void, RunwayEventStartData_ctor)(_this, mvStage, onStageIdols, methodInfo);
+		HOOK_CAST_CALL(void, RunwayEventStartData_ctor)(_this, mvStage, onStageIdols);
 	}
 
 
@@ -2243,6 +2248,7 @@ namespace
 		return HOOK_CAST_CALL(void, MainThreadDispatcher_LateUpdate)(_this, method);
 	}
 
+#ifdef __OBSOLETE_HOOK__
 	void checkAndAddCostume(int key, void* value) {
 		static auto CostumeStatus_klass = il2cpp_symbols::get_class("PRISM.Module.Networking.dll",
 			"PRISM.Module.Networking.Stub.Status", "CostumeStatus");
@@ -2335,6 +2341,7 @@ namespace
 		confirmationingModel = false;
 		return;
 	}
+#endif
 
 	void updateSwayStringPoint(void* _this) {
 		if (!g_enable_chara_param_edit) return;
@@ -2607,7 +2614,7 @@ namespace
 	void Unity_set_nearClipPlane_hook(void* _this, float single) {
 		if (_this == baseCamera) {
 			if (g_enable_free_camera && g_reenable_clipPlane) {
-				single = 0.001f;
+				single = g_nearClipPlane;
 			}
 		}
 		return HOOK_CAST_CALL(void, Unity_set_nearClipPlane)(_this, single);
@@ -2618,7 +2625,7 @@ namespace
 		auto ret = HOOK_CAST_CALL(float, Unity_get_nearClipPlane)(_this);
 		if (_this == baseCamera) {
 			if (g_enable_free_camera && g_reenable_clipPlane) {
-				ret = 0.001f;
+				ret = g_nearClipPlane;
 			}
 		}
 		return ret;
@@ -2628,7 +2635,7 @@ namespace
 		auto ret = HOOK_CAST_CALL(float, Unity_get_farClipPlane)(_this);
 		if (_this == baseCamera) {
 			if (g_enable_free_camera && g_reenable_clipPlane) {
-				ret = 2500.0f;
+				ret = g_farClipPlane;
 			}
 		}
 		return ret;
@@ -2638,7 +2645,7 @@ namespace
 	void Unity_set_farClipPlane_hook(void* _this, float value) {
 		if (_this == baseCamera) {
 			if (g_enable_free_camera && g_reenable_clipPlane) {
-				value = 2500.0f;
+				value = g_farClipPlane;
 			}
 		}
 		HOOK_CAST_CALL(void, Unity_set_farClipPlane)(_this, value);
@@ -2798,6 +2805,121 @@ namespace
 			}
 		}
 	}
+
+
+#define MAGICACLOTH_GET_CLASS(_str_name_) \
+	((Il2CppClass*)il2cpp_symbols_logged::get_class("MagicaClothV2.dll", "MagicaCloth2", _str_name_))
+#define MAGICACLOTH_SET_INERTIA_LIMIT(_txt_field_name_, _val_value_) \
+	static auto field_InertiaConstraint_SerializeData_##_txt_field_name_ = il2cpp_class_get_field_from_name(klass_InertiaConstraint_SerializeData, #_txt_field_name_); \
+	auto _txt_field_name_ = (managed::MagicaCloth2::CheckSliderSerializeData*)il2cpp_field_get_value_object(field_InertiaConstraint_SerializeData_##_txt_field_name_, inertiaConstraint); \
+	_txt_field_name_->value = _val_value_;
+
+	void ModifyMagicaCloth(Il2CppObject* cloth) {
+		if (g_magicacloth_output_cloth) {
+			auto name = il2cpp_symbols::get_unity_gameobject_fullname(cloth);
+			std::cout << "ModifyMagicaCloth: " << name << std::endl;
+		}
+
+		if (!g_magicacloth_override) return;
+
+		static auto klass_MagicaCloth = MAGICACLOTH_GET_CLASS("MagicaCloth");
+		static auto klass_ClothSerializeData = MAGICACLOTH_GET_CLASS("ClothSerializeData");
+		static auto klass_InertiaConstraint = MAGICACLOTH_GET_CLASS("InertiaConstraint");
+		static auto klass_InertiaConstraint_SerializeData = klass_InertiaConstraint->GetNestedClass("SerializeData");
+		static auto klass_AngleConstraint = MAGICACLOTH_GET_CLASS("AngleConstraint");
+		static auto klass_AngleConstraint_LimitSerializeData = il2cpp_symbols::get_nested_class(klass_AngleConstraint, "LimitSerializeData");
+
+		static auto field_MagicaCloth_serializeData = klass_MagicaCloth->GetField("serializeData");
+		auto sdata = field_MagicaCloth_serializeData->GetValueObject(cloth);
+
+		static auto field_ClothSerializeData_damping = klass_ClothSerializeData->GetField("damping");
+
+		auto damping = field_ClothSerializeData_damping->GetValueObject<managed::MagicaCloth2::CurveSerializeData*>(sdata);
+		damping->value = g_magicacloth_damping;
+
+		static auto field_ClothSerializeData_inertiaConstraint = klass_ClothSerializeData->GetField("inertiaConstraint");
+		auto inertiaConstraint = field_ClothSerializeData_inertiaConstraint->GetValueObject<managed::MagicaCloth2::InertiaConstraintSerializeData*>(sdata);
+		MAGICACLOTH_SET_INERTIA_LIMIT(movementSpeedLimit, g_magicacloth_movementSpeedLimit);
+		MAGICACLOTH_SET_INERTIA_LIMIT(rotationSpeedLimit, g_magicacloth_rotationSpeedLimit);
+		MAGICACLOTH_SET_INERTIA_LIMIT(localMovementSpeedLimit, g_magicacloth_localMovementSpeedLimit);
+		MAGICACLOTH_SET_INERTIA_LIMIT(localRotationSpeedLimit, g_magicacloth_localRotationSpeedLimit);
+		MAGICACLOTH_SET_INERTIA_LIMIT(particleSpeedLimit, g_magicacloth_particleSpeedLimit);
+
+		static auto field_ClothSerializeData_angleLimitConstraint = klass_ClothSerializeData->GetField("angleLimitConstraint");
+		auto angleLimitConstraint = field_ClothSerializeData_angleLimitConstraint->GetValueObject(sdata);
+		static auto field_AngleConstraint_LimitSerializeData_limitAngle = klass_AngleConstraint_LimitSerializeData->GetField("limitAngle");
+		auto limitAngle = field_AngleConstraint_LimitSerializeData_limitAngle->GetValueObject<managed::MagicaCloth2::CurveSerializeData*>(angleLimitConstraint);
+		limitAngle->value = g_magicacloth_limitAngle;
+
+		static auto field_ClothSerializeData_springConstraint = klass_ClothSerializeData->GetField("springConstraint");
+		auto springConstraint = field_ClothSerializeData_springConstraint->GetValueObject<managed::MagicaCloth2::SpringConstraintSerializeData*>(sdata);
+		springConstraint->limitDistance = g_magicacloth_springLimitDistance;
+		springConstraint->springNoise = g_magicacloth_springNoise;
+	}
+
+	HOOK_ORIG_TYPE MagicaCloth_BuildAndRun_orig;
+	bool MagicaCloth_BuildAndRun_hook(void* _this) {
+		ModifyMagicaCloth((Il2CppObject*)_this);
+		return HOOK_CAST_CALL(bool, MagicaCloth_BuildAndRun)(_this);
+	}
+
+	HOOK_ORIG_TYPE MagicaCloth_SetParameterChange_orig;
+	void MagicaCloth_SetParameterChange_hook(void* _this) {
+		ModifyMagicaCloth((Il2CppObject*)_this);
+		HOOK_CAST_CALL(void, MagicaCloth_SetParameterChange)(_this);
+	}
+
+	HOOK_ORIG_TYPE MagicaClothController_get_Inertia_orig;
+	void* MagicaClothController_get_Inertia_hook(void* _this, MethodInfo* mi) {
+		auto value = (managed::MagicaCloth2::BodyParamFloatProperty*)HOOK_CAST_CALL(void*, MagicaClothController_get_Inertia)(_this, mi);
+		if (mi->IsName("get_Inertia")) {
+			if (g_magicacloth_output_controller) {
+				printf("MagicaClothController_get_Inertia_hook\n");
+			}
+			if (g_magicacloth_override) {
+				value->MinValue = g_magicacloth_inertia_min;
+				value->MaxValue = g_magicacloth_inertia_max;
+			}
+		}
+		return value;
+	}
+
+	HOOK_ORIG_TYPE MagicaClothController_get_Radius_orig;
+	void* MagicaClothController_get_Radius_hook(void* _this, MethodInfo* mi) {
+		auto value = (managed::MagicaCloth2::BodyParamFloatProperty*)HOOK_CAST_CALL(void*, MagicaClothController_get_Radius)(_this, mi);
+		if (mi->IsName("get_Radius")) {
+			if (g_magicacloth_output_controller) {
+				printf("MagicaClothController_get_Radius_hook\n");
+			}
+			if (g_magicacloth_override) {
+				value->MinValue = g_magicacloth_radius_min;
+				value->MaxValue = g_magicacloth_radius_max;
+			}
+		}
+		return value;
+	}
+
+	HOOK_ORIG_TYPE MagicaClothController_Awake_orig;
+	void MagicaClothController_Awake_hook(Il2CppObject* _this) {
+		HOOK_CAST_CALL(void, MagicaClothController_Awake)(_this);
+
+		if (g_magicacloth_output_controller) {
+			printf("MagicaClothController_Awake_hook\n");
+		}
+
+		static auto klass = il2cpp_symbols_logged::get_class("PRISM.Module.CustomMagicaCloth.dll", "PRISM.Module.CustomMagicaCloth", "MagicaClothController");
+		static auto method_get_Inertia = il2cpp_class_get_method_from_name(klass, "get_Inertia", 0);
+		auto method_get_Radius = il2cpp_class_get_method_from_name(klass, "get_Radius", 0);
+
+		auto inertia = method_get_Inertia->Invoke<managed::MagicaCloth2::BodyParamFloatProperty*>(_this, {});
+		inertia->MinValue = g_magicacloth_inertia_min;
+		inertia->MaxValue = g_magicacloth_inertia_max;
+
+		auto radius = method_get_Radius->Invoke<managed::MagicaCloth2::BodyParamFloatProperty*>(_this, {});
+		radius->MinValue = g_magicacloth_radius_min;
+		radius->MaxValue = g_magicacloth_radius_max;
+	}
+
 
 	void readDMMGameGuardData();
 
@@ -3114,16 +3236,16 @@ namespace
 			"DepthOfFieldClip", "CreatePlayable", 2
 		);
 
-		auto PostProcess_DepthOfFieldClip_CreatePlayable_addr = il2cpp_symbols::get_method_pointer(
+		/*auto PostProcess_DepthOfFieldClip_CreatePlayable_addr = il2cpp_symbols::get_method_pointer(
 			"PRISM.Legacy.dll", "UnityEngine.Rendering.Universal.PostProcess",
 			"DepthOfFieldClip", "CreatePlayable", 2
-		);
+		);*/
 
 		auto Live_Update_addr = il2cpp_symbols::get_method_pointer(
 			"PRISM.Legacy.dll", "PRISM",
 			"LiveScene", "Update", 0
 		);
-		auto LiveCostumeChangeView_setTryOnMode_addr = il2cpp_symbols::get_method_pointer(
+		/*auto LiveCostumeChangeView_setTryOnMode_addr = il2cpp_symbols::get_method_pointer(
 			"PRISM.Interactions.Live.dll", "PRISM.Interactions",
 			"LiveCostumeChangeView", "_setTryOnMode", 2
 		);
@@ -3152,7 +3274,7 @@ namespace
 		auto LiveCostumeChangeModel_ctor_addr = il2cpp_symbols::get_method_pointer(
 			"PRISM.Adapters.dll", "PRISM.Adapters",
 			"LiveCostumeChangeModel", ".ctor", 4
-		);
+		);*/
 
 		auto AssembleCharacter_ApplyParam_addr = il2cpp_symbols::get_method_pointer(
 			"PRISM.Legacy.dll", "PRISM",
@@ -3291,6 +3413,41 @@ namespace
 
 		auto Subject_OnNext_addr = GetSubject_OnNext_addr();
 
+		auto MagicaCloth_BuildAndRun_addr = il2cpp_symbols_logged::get_method_pointer(
+			"MagicaClothV2.dll", "MagicaCloth2",
+			"MagicaCloth", "BuildAndRun", 0
+		);
+
+		auto MagicaCloth_SetParameterChange_addr = il2cpp_symbols_logged::get_method_pointer(
+			"MagicaClothV2.dll", "MagicaCloth2",
+			"MagicaCloth", "SetParameterChange", 0
+		);
+
+		auto MagicaClothController_get_Inertia_addr = il2cpp_symbols_logged::get_method_pointer(
+			"PRISM.Module.CustomMagicaCloth.dll", "PRISM.Module.CustomMagicaCloth",
+			"MagicaClothController", "get_Inertia", 0
+		);
+
+		auto MagicaClothController_get_Radius_addr = il2cpp_symbols_logged::get_method_pointer(
+			"PRISM.Module.CustomMagicaCloth.dll", "PRISM.Module.CustomMagicaCloth",
+			"MagicaClothController", "get_Radius", 0
+		);
+
+		auto BodyParamFloatProperty__ctor_addr = il2cpp_symbols_logged::get_method_pointer(
+			"PRISM.Module.CustomMagicaCloth.dll", "PRISM.Module.CustomMagicaCloth",
+			"BodyParamFloatProperty", ".ctor", 0
+		);
+
+		auto BodyParamFloatProperty__getValue_addr = il2cpp_symbols_logged::get_method_pointer(
+			"PRISM.Module.CustomMagicaCloth.dll", "PRISM.Module.CustomMagicaCloth",
+			"BodyParamFloatProperty", "_getValue", 1
+		);
+
+		auto MagicaClothController_Awake_addr = il2cpp_symbols_logged::get_method_pointer(
+			"PRISM.Module.CustomMagicaCloth.dll", "PRISM.Module.CustomMagicaCloth",
+			"MagicaClothController", "Awake", 0
+		);
+
 #pragma endregion
 		ADD_HOOK(SetResolution, "SetResolution at %p");
 		ADD_HOOK_1(StoryExtensions_IsLocked);
@@ -3321,21 +3478,21 @@ namespace
 		ADD_HOOK(InvokeMoveNext, "InvokeMoveNext at %p");
 		// ADD_HOOK(Live_SetEnableDepthOfField, "Live_SetEnableDepthOfField at %p");
 		ADD_HOOK(DepthOfFieldClip_CreatePlayable, "DepthOfFieldClip_CreatePlayable at %p");
-		ADD_HOOK(PostProcess_DepthOfFieldClip_CreatePlayable, "PostProcess_DepthOfFieldClip_CreatePlayable at %p");
+		//ADD_HOOK(PostProcess_DepthOfFieldClip_CreatePlayable, "PostProcess_DepthOfFieldClip_CreatePlayable at %p");
 		// ADD_HOOK(Live_Update, "Live_Update at %p");
-		ADD_HOOK(LiveCostumeChangeView_setTryOnMode, "LiveCostumeChangeView_setTryOnMode at %p");
-		ADD_HOOK(LiveCostumeChangeView_setIdolCostume, "LiveCostumeChangeView_setIdolCostume at %p");
-		ADD_HOOK(LiveCostumeChangeModel_GetDress, "LiveCostumeChangeModel_GetDress at %p");
-		ADD_HOOK(LiveCostumeChangeModel_GetHairstyle, "LiveCostumeChangeModel_GetHairstyle at %p");
-		ADD_HOOK(LiveCostumeChangeModel_GetAccessory, "LiveCostumeChangeModel_GetAccessory at %p");
-		ADD_HOOK(LiveCostumeChangeModel_ctor, "LiveCostumeChangeModel_ctor at %p");
+		//ADD_HOOK(LiveCostumeChangeView_setTryOnMode, "LiveCostumeChangeView_setTryOnMode at %p");
+		//ADD_HOOK(LiveCostumeChangeView_setIdolCostume, "LiveCostumeChangeView_setIdolCostume at %p");
+		//ADD_HOOK(LiveCostumeChangeModel_GetDress, "LiveCostumeChangeModel_GetDress at %p");
+		//ADD_HOOK(LiveCostumeChangeModel_GetHairstyle, "LiveCostumeChangeModel_GetHairstyle at %p");
+		//ADD_HOOK(LiveCostumeChangeModel_GetAccessory, "LiveCostumeChangeModel_GetAccessory at %p");
+		//ADD_HOOK(LiveCostumeChangeModel_ctor, "LiveCostumeChangeModel_ctor at %p");
 		ADD_HOOK(AssembleCharacter_ApplyParam, "AssembleCharacter_ApplyParam at %p");
 		ADD_HOOK(MainThreadDispatcher_LateUpdate, "MainThreadDispatcher_LateUpdate at %p");
-		ADD_HOOK(dic_int_ICostumeStatus_add, "dic_int_ICostumeStatus_add at %p");
-		ADD_HOOK(GetCostumeListReply_get_CostumeList, "GetCostumeListReply_get_CostumeList at %p");
-		ADD_HOOK(GetCostumeListReply_get_HairstyleList, "GetCostumeListReply_get_HairstyleList at %p");
-		ADD_HOOK(GetCostumeListReply_get_AccessoryList, "GetCostumeListReply_get_AccessoryList at %p");
-		ADD_HOOK(LiveMVUnitConfirmationModel_ctor, "LiveMVUnitConfirmationModel_ctor at %p");
+		//ADD_HOOK(dic_int_ICostumeStatus_add, "dic_int_ICostumeStatus_add at %p");
+		//ADD_HOOK(GetCostumeListReply_get_CostumeList, "GetCostumeListReply_get_CostumeList at %p");
+		//ADD_HOOK(GetCostumeListReply_get_HairstyleList, "GetCostumeListReply_get_HairstyleList at %p");
+		//ADD_HOOK(GetCostumeListReply_get_AccessoryList, "GetCostumeListReply_get_AccessoryList at %p");
+		//ADD_HOOK(LiveMVUnitConfirmationModel_ctor, "LiveMVUnitConfirmationModel_ctor at %p");
 		ADD_HOOK(SwayString_SetupPoint, "SwayString_SetupPoint at %p");
 		ADD_HOOK(LiveMVUnit_GetMemberChangeRequestData, "LiveMVUnit_GetMemberChangeRequestData at %p");
 		ADD_HOOK(LiveMVUnitMemberChangePresenter_initializeAsync_b_4_MoveNext, "LiveMVUnitMemberChangePresenter_initializeAsync_b_4_MoveNext at %p");
@@ -3356,6 +3513,13 @@ namespace
 		ADD_HOOK_1(RunwayEventStartData_ctor);
 
 		ADD_HOOK_1(Subject_OnNext);
+		ADD_HOOK_1(MagicaCloth_BuildAndRun);
+		ADD_HOOK_1(MagicaCloth_SetParameterChange);
+		ADD_HOOK_1(MagicaClothController_get_Inertia);
+		ADD_HOOK_1(MagicaClothController_get_Radius);
+		//ADD_HOOK_1(BodyParamFloatProperty__ctor);
+		//ADD_HOOK_1(BodyParamFloatProperty__getValue);
+		ADD_HOOK_1(MagicaClothController_Awake);
 
 		tools::AddNetworkingHooks();
 

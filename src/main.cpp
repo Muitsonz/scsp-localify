@@ -50,7 +50,9 @@ bool g_unlock_PIdol_and_SChara_events = false;
 int g_start_resolution_w = -1;
 int g_start_resolution_h = -1;
 bool g_start_resolution_fullScreen = false;
-bool g_reenable_clipPlane = false;
+bool g_reenable_clipPlane = true;
+float g_nearClipPlane = 0;
+float g_farClipPlane = 2;
 bool g_shader_quickprobing = true;
 bool g_loadasset_output = false;
 bool g_extract_asset = false;
@@ -60,6 +62,23 @@ bool g_extract_asset_renderer = false;
 bool g_extract_asset_sprite = false;
 bool g_extract_asset_texture2d = false;
 bool g_extract_asset_log_unknown_asset = false;
+bool g_magicacloth_override = false;
+bool g_magicacloth_output_cloth = true;
+bool g_magicacloth_output_controller = false;
+float g_magicacloth_inertia_min = 1.0f;
+float g_magicacloth_inertia_max = 1.0f;
+float g_magicacloth_radius_min = 0.002f;
+float g_magicacloth_radius_max = 0.028f;
+float g_magicacloth_damping = 0.01f;
+float g_magicacloth_movementSpeedLimit = 10.0f;
+float g_magicacloth_rotationSpeedLimit = 1440.0f;
+float g_magicacloth_localMovementSpeedLimit = 10.0f;
+float g_magicacloth_localRotationSpeedLimit = 1440.0f;
+float g_magicacloth_particleSpeedLimit = 40.0f;
+float g_magicacloth_limitAngle = 90.0f;
+float g_magicacloth_springLimitDistance = 0.5f;
+float g_magicacloth_springNoise = 0.1f;
+
 
 std::filesystem::path g_localify_base("scsp_localify");
 constexpr const char ConfigJson[] = "scsp-config.json";
@@ -91,6 +110,47 @@ namespace
 
 namespace
 {
+	bool ReadCameraKey(std::vector<std::string>& logs, std::string configKeyName, int mapKey, rapidjson::Value& value) {
+		if (value.IsString()) {
+			const char* s = value.GetString();
+			if (s && value.GetStringLength() == 1) {
+				SCCamera::CameraControlKeyMapping[s[0]] = mapKey;
+				logs.emplace_back("Key binding changed: '" + configKeyName + "' = " + std::to_string(s[0]) + "\n");
+				return true;
+			}
+			else {
+				logs.emplace_back("Invalid string input for key '" + configKeyName + "'.\n");
+				return false;
+			}
+		}
+		else if (value.IsInt()) {
+			int i = value.GetInt();
+			if (i >= 0 && i <= 255) {
+				SCCamera::CameraControlKeyMapping[i] = mapKey;
+				logs.emplace_back("Key binding changed: '" + configKeyName + "' = " + std::to_string(i) + "\n");
+				return true;
+			}
+			else {
+				logs.emplace_back("Invalid int input for key '" + configKeyName + "'.\n");
+				return false;
+			}
+		}
+		else {
+			logs.emplace_back("Invalid input for key '" + configKeyName + "'.\n");
+			return false;
+		}
+	}
+#define ReadJsonKeyBinding(_STR_CONFIG_KEY_NAME_, _VAL_MAP_KEY_) \
+	if (document.HasMember(_STR_CONFIG_KEY_NAME_)) { \
+		ReadCameraKey(logs, _STR_CONFIG_KEY_NAME_, _VAL_MAP_KEY_, document[_STR_CONFIG_KEY_NAME_]); \
+	} else { \
+		SCCamera::CameraControlKeyMapping[_VAL_MAP_KEY_] = _VAL_MAP_KEY_; \
+	}
+
+#define READ_JSON_FLOAT(_txt_var_name_no_prefix_) \
+	if (document.HasMember(#_txt_var_name_no_prefix_)) \
+	{ g_##_txt_var_name_no_prefix_ = document[#_txt_var_name_no_prefix_].GetFloat(); }
+
 	std::vector<std::string> read_config(std::vector<std::string>& logs)
 	{
 		std::ifstream config_stream{ ConfigJson };
@@ -197,7 +257,38 @@ namespace
 				g_start_resolution_h = startResolution["h"].GetInt();
 				g_start_resolution_fullScreen = startResolution["isFull"].GetBool();
 			}
-			
+
+			ReadJsonKeyBinding("key_w_camera_forward", KEY_W);
+			ReadJsonKeyBinding("key_s_camera_back", KEY_S);
+			ReadJsonKeyBinding("key_a_camera_left", KEY_A);
+			ReadJsonKeyBinding("key_d_camera_right", KEY_D);
+			ReadJsonKeyBinding("key_ctrl_camera_down", KEY_CTRL);
+			ReadJsonKeyBinding("key_space_camera_up", KEY_SPACE);
+			ReadJsonKeyBinding("key_up_cameralookat_up", KEY_UP);
+			ReadJsonKeyBinding("key_down_cameralookat_down", KEY_DOWN);
+			ReadJsonKeyBinding("key_left_cameralookat_left", KEY_LEFT);
+			ReadJsonKeyBinding("key_right_cameralookat_right", KEY_RIGHT);
+			ReadJsonKeyBinding("key_q_camera_fov_increase", KEY_Q);
+			ReadJsonKeyBinding("key_e_camera_fov_decrease", KEY_E);
+			ReadJsonKeyBinding("key_r_camera_reset", KEY_R);
+			ReadJsonKeyBinding("key_192_camera_mouseMove", KEY_192);
+
+			if (document.HasMember("magicacloth_override")) {
+				g_magicacloth_override = document["magicacloth_override"].GetBool();
+			}
+			READ_JSON_FLOAT(magicacloth_inertia_min);
+			READ_JSON_FLOAT(magicacloth_inertia_max);
+			READ_JSON_FLOAT(magicacloth_radius_min);
+			READ_JSON_FLOAT(magicacloth_radius_max);
+			READ_JSON_FLOAT(magicacloth_damping);
+			READ_JSON_FLOAT(magicacloth_movementSpeedLimit);
+			READ_JSON_FLOAT(magicacloth_rotationSpeedLimit);
+			READ_JSON_FLOAT(magicacloth_localMovementSpeedLimit);
+			READ_JSON_FLOAT(magicacloth_localRotationSpeedLimit);
+			READ_JSON_FLOAT(magicacloth_particleSpeedLimit);
+			READ_JSON_FLOAT(magicacloth_limitAngle);
+			READ_JSON_FLOAT(magicacloth_springLimitDistance);
+			READ_JSON_FLOAT(magicacloth_springNoise);
 		}
 
 		config_stream.close();
@@ -266,10 +357,10 @@ int __stdcall DllMain(HINSTANCE dllModule, DWORD reason, LPVOID)
 			std::condition_variable cond;
 			std::atomic<bool> hookIsReady(false);
 			g_on_hook_ready = [&]
-			{
-				hookIsReady.store(true, std::memory_order_release);
-				cond.notify_one();
-			};
+				{
+					hookIsReady.store(true, std::memory_order_release);
+					cond.notify_one();
+				};
 
 			// 依赖检查游戏版本的指针加载，因此在 hook 完成后再加载翻译数据
 			std::unique_lock lock(mutex);

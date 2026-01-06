@@ -29,7 +29,6 @@ il2cpp_type_get_object_t il2cpp_type_get_object;
 il2cpp_gchandle_new_t il2cpp_gchandle_new;
 il2cpp_gchandle_free_t il2cpp_gchandle_free;
 il2cpp_gchandle_get_target_t il2cpp_gchandle_get_target;
-il2cpp_reflection_type_get_type_t il2cpp_reflection_type_get_type;
 il2cpp_class_from_type_t il2cpp_class_from_type;
 il2cpp_runtime_class_init_t il2cpp_runtime_class_init;
 il2cpp_runtime_invoke_t il2cpp_runtime_invoke;
@@ -63,6 +62,15 @@ char* il2cpp_array_addr_with_size(void* array, int32_t size, uintptr_t idx)
 
 std::string Il2CppString::ToUtf8String() {
 	return reflection::helper::ToUtf8(this);
+}
+
+
+FieldInfo* Il2CppClass::GetField(const char* name) {
+	return il2cpp_class_get_field_from_name(this, name);
+}
+
+Il2CppClass* Il2CppClass::GetNestedClass(const char* name) {
+	return il2cpp_symbols::get_nested_class(this, name);
 }
 
 
@@ -137,7 +145,6 @@ namespace il2cpp_symbols
 		RESOLVE_IMPORT(il2cpp_gchandle_new);
 		RESOLVE_IMPORT(il2cpp_gchandle_free);
 		RESOLVE_IMPORT(il2cpp_gchandle_get_target);
-		RESOLVE_IMPORT(il2cpp_reflection_type_get_type);
 		RESOLVE_IMPORT(il2cpp_class_from_type);
 		RESOLVE_IMPORT(il2cpp_runtime_class_init);
 		RESOLVE_IMPORT(il2cpp_runtime_invoke);
@@ -293,6 +300,59 @@ namespace il2cpp_symbols
 
 	const char* il2cpp_method_get_param_type_name(const MethodInfo* mi, uint32_t index) {
 		return il2cpp_class_get_name(il2cpp_class_from_il2cpp_type(il2cpp_method_get_param(mi, index)));
+	}
+
+	Il2CppClass* get_nested_class(Il2CppClass* klass, const char* nestedClassName) {
+		void* iter = NULL;
+		void* nested = NULL;
+		while ((nested = il2cpp_class_get_nested_types(klass, &iter)) != NULL) {
+			if (0 == strcmp(nestedClassName, il2cpp_class_get_name(nested))) {
+				return (Il2CppClass*)nested;
+			}
+		}
+		return nullptr;
+	}
+
+	std::string get_unity_gameobject_fullname(Il2CppObject* obj, bool excludeThisName, __inout_opt int* pIncludedParentCount) {
+		static auto klass_Component = il2cpp_symbols_logged::get_class("UnityEngine.CoreModule.dll", "UnityEngine", "Component");
+		static auto method_Component_get_gameObject = il2cpp_class_get_method_from_name(klass_Component, "get_gameObject", 0);
+
+		auto klass = il2cpp_object_get_class(obj);
+		if (il2cpp_class_is_assignable_from(klass_Component, klass)) {
+			std::vector<std::string> parts{};
+			if (!excludeThisName) {
+				auto managedName = reflection::UnityObject_get_name(obj);
+				auto name = reflection::helper::ToUtf8(managedName);
+				parts.push_back(name);
+			}
+			int count = 0;
+			int maxCount = (pIncludedParentCount == nullptr) ? std::numeric_limits<int>::max() : *pIncludedParentCount;
+			auto go = method_Component_get_gameObject->Invoke<Il2CppObject*>(obj, {});
+			while (go != nullptr && count < maxCount) {
+				auto managedName = reflection::UnityObject_get_name(go);
+				auto name = reflection::helper::ToUtf8(managedName);
+				parts.push_back(name);
+				++count;
+				go = reflection::helper::GetParentGameObject(go);
+			}
+			if (pIncludedParentCount != nullptr)
+				*pIncludedParentCount = count;
+			std::string ret{};
+			bool isFirstPart = true;
+			for (auto it = parts.rbegin(); it != parts.rend(); ++it) {
+				if (isFirstPart)
+					isFirstPart = false;
+				else
+					ret += "/";
+				ret += *it;
+			}
+			return ret;
+		}
+		else {
+			if (pIncludedParentCount != nullptr)
+				*pIncludedParentCount = 0;
+			return "";
+		}
 	}
 }
 

@@ -41,9 +41,11 @@ namespace SCGUILoop {
 		bool hasData = false;
 		std::string name = "";
 		float fov = 0.0f;
-
 		struct { float x, y, z; } pos = { 0,0,0 };
 		struct { float x, y, z; } lookAt = { 0,0,0 };
+		bool overwriteClipPlane = false;
+		float nearClipPlane = 0;
+		float farClipPlane = 2;
 	};
 
 	rapidjson::Value SerializeFreeCamState(const FreeCamState& state, rapidjson::Document::AllocatorType& allocator) {
@@ -66,6 +68,12 @@ namespace SCGUILoop {
 			valLookAt.PushBack(state.lookAt.y, allocator);
 			valLookAt.PushBack(state.lookAt.z, allocator);
 			obj.AddMember("lookAt", valLookAt, allocator);
+
+			if (g_reenable_clipPlane) {
+				obj.AddMember("overwriteClipPlane", rapidjson::Value(true), allocator);
+				obj.AddMember("nearClipPlane", rapidjson::Value(g_nearClipPlane), allocator);
+				obj.AddMember("farClipPlane", rapidjson::Value(g_farClipPlane), allocator);
+			}
 		}
 		return obj;
 	}
@@ -89,8 +97,48 @@ namespace SCGUILoop {
 				if (length > 1 && arr[1].IsNumber()) state.lookAt.y = arr[1].GetFloat();
 				if (length > 2 && arr[2].IsNumber()) state.lookAt.z = arr[2].GetFloat();
 			}
+			if (v.HasMember("overwriteClipPlane") && v["overwriteClipPlane"].IsBool() && v["overwriteClipPlane"].GetBool()) {
+				state.overwriteClipPlane = true;
+				if (v.HasMember("nearClipPlane") && v["nearClipPlane"].IsFloat()) state.nearClipPlane = v["nearClipPlane"].GetFloat();
+				if (v.HasMember("farClipPlane") && v["farClipPlane"].IsFloat()) state.nearClipPlane = v["farClipPlane"].GetFloat();
+			}
 		}
 		return state;
+	}
+
+	rapidjson::Value SerializeUnitIdol(const UnitIdol& idol, rapidjson::Document::AllocatorType& allocator) {
+		rapidjson::Value obj(rapidjson::kObjectType);
+		obj.AddMember("charaId", rapidjson::Value(idol.CharaId), allocator);
+		if (idol.CharaId >= 0) {
+			obj.AddMember("clothId", rapidjson::Value(idol.ClothId), allocator);
+			obj.AddMember("hairId", rapidjson::Value(idol.HairId), allocator);
+
+			rapidjson::Value accessoryIds(rapidjson::kArrayType);
+			for (int i = 0; i < idol.AccessoryIdsLength; ++i) {
+				accessoryIds.PushBack(idol.AccessoryIds[i], allocator);
+			}
+			obj.AddMember("accessoryIds", accessoryIds, allocator);
+		}
+
+		return obj;
+	}
+	UnitIdol DeserializeUnitIdol(const rapidjson::Value& v) {
+		UnitIdol idol;
+		if (v.HasMember("charaId") && v["charaId"].IsInt()) idol.CharaId = v["charaId"].GetInt();
+		if (idol.CharaId >= 0) {
+			if (v.HasMember("clothId") && v["clothId"].IsInt()) idol.ClothId = v["clothId"].GetInt();
+			if (v.HasMember("hairId") && v["hairId"].IsInt()) idol.HairId = v["hairId"].GetInt();
+			if (v.HasMember("accessoryIds") && v["accessoryIds"].IsArray()) {
+				const auto& arr = v["accessoryIds"].GetArray();
+				if ((idol.AccessoryIdsLength = arr.Size()) > 0) {
+					idol.AccessoryIds = new int[idol.AccessoryIdsLength];
+					for (int i = 0; i < idol.AccessoryIdsLength; ++i) {
+						idol.AccessoryIds[i] = arr[i].GetInt();
+					}
+				}
+			}
+		}
+		return idol;
 	}
 
 
@@ -247,6 +295,50 @@ namespace SCGUILoop {
 	char inputOverrideMvUnitIdol[1024] = "";
 	void overrideMvUnitIdolLoop() {
 		if (ImGui::Begin("Override MvUnit Idols")) {
+
+			// export, append; remove all
+			ImGui::Dummy(ImVec2(40, 0));
+			ImGui::SameLine();
+			if (ImGui::Button("Export to clipboard##overwriteIdols")) {
+				rapidjson::Document doc;
+				doc.SetArray();
+				auto& allocator = doc.GetAllocator();
+				for (auto& idol : overridenMvUnitIdols) {
+					doc.PushBack(SerializeUnitIdol(idol, allocator), allocator);
+				}
+				rapidjson::StringBuffer buffer;
+				rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+				doc.Accept(writer);
+				std::string serialized(buffer.GetString());
+				auto r = WriteClipboard(serialized);
+				ShowMessageBox((r ? "Success" : "Failed"));
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Overwrite from clipboard##overwriteIdols")) {
+				std::string text;
+				if (!ReadClipboard(&text)) {
+					ShowMessageBox("Failed to read clipboard.");
+				}
+				else {
+					rapidjson::Document doc;
+					doc.Parse(text.c_str());
+					if (doc.IsArray()) {
+						const auto& arr = doc.GetArray();
+						const auto length = std::min((int)arr.Size(), overridenMvUnitIdols_length);
+						for (int i = 0; i < length; ++i) {
+							auto parsed = DeserializeUnitIdol(arr[i]);
+							overridenMvUnitIdols[i] = parsed;
+						}
+					}
+				}
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Remove all##overwriteIdols")) {
+				for (int i = 0; i < overridenMvUnitIdols_length; ++i) {
+					overridenMvUnitIdols[i].Clear();
+				}
+			}
+
 			for (int i = 0; i < overridenMvUnitIdols_length; ++i) {
 				char label[1024];
 
@@ -314,31 +406,25 @@ namespace SCGUILoop {
 			ImGui::SameLine();
 			HELP_TOOLTIP("(?)", "保存服装编辑信息并在MV播放时替换。\nSave costumes changing data and Replace when MV starts.");
 
-			if (g_save_and_replace_costume_changes) {
-				ImGui::Indent(30);
-				ImGui::Checkbox("Override MV unit idols", &g_overrie_mv_unit_idols);
-				ImGui::SameLine();
-				HELP_TOOLTIP("(?)", "在操作窗口中保存用于替换MV播放时的角色信息。\nSave idols' data in control panel to replace them when playing MV.");
+			ImGui::Checkbox("Override MV unit idols", &g_overrie_mv_unit_idols);
+			ImGui::SameLine();
+			HELP_TOOLTIP("(?)", "在操作窗口中保存用于替换MV播放时的角色信息。\nSave idols' data in control panel to replace them when playing MV.");
 
-				ImGui::Checkbox("Show hidden costumes (override IsAllDressOrdered)", &g_show_hidden_costumes);
-				ImGui::SameLine();
-				HELP_TOOLTIP("(?)", "在进入换装窗口前勾选有效。\nActive only when checked before entering costume changing view.");
-				ImGui::Unindent(30);
-			}
+			ImGui::Checkbox("Show hidden costumes (override IsAllDressOrdered)", &g_show_hidden_costumes);
+			ImGui::SameLine();
+			HELP_TOOLTIP("(?)", "在进入换装窗口前勾选有效。\nActive only when checked before entering costume changing view.");
 
 			ImGui::Checkbox("Enable VocalSeparatedOn forcibly", &g_override_isVocalSeparatedOn);
 			ImGui::SameLine();
 			HELP_TOOLTIP("(?)", "若最终播放MV时的歌曲或所选角色不支持分段演唱则会导致卡死或崩溃。\nGame will freeze or crash if finally selected song or idols don't support separated vocal.");
 
-			ImGui::Checkbox("[Legacy] Live Allow Same Idol (Dangerous)", &g_allow_same_idol);
-			ImGui::SameLine();
-			HELP_TOOLTIP("(?)", "影分身术！\n允许在 Live 中选择同一人。\n（此模式的编组数据会上传，请小心你的号）")
-
 			ImGui::Checkbox("Enable Character Parameter Editor", &g_enable_chara_param_edit);
 			ImGui::SameLine();
-			HELP_TOOLTIP("(?)", "启用角色身体参数编辑器")
+			HELP_TOOLTIP("(?)", "启用角色身体参数编辑器");
 
-			ImGui::Checkbox("Unlock Stories", &g_unlock_PIdol_and_SChara_events);
+			ImGui::Checkbox("Unlock Stories (Dangerous)", &g_unlock_PIdol_and_SChara_events);
+			ImGui::SameLine();
+			HELP_TOOLTIP("(?)", "阅读故事内容时会上传故事ID，理论上可追查非法数据。\nStory id will be uploaded when reading, and the invalid data can be tracked technically.");
 
 			if (ImGui::CollapsingHeader("Resolution Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
 				ImGui::Text("Window Resolution Settings");
@@ -404,9 +490,16 @@ namespace SCGUILoop {
 
 				if (ImGui::CollapsingHeader("Free Camera", ImGuiTreeNodeFlags_DefaultOpen)) {
 					ImGui::Checkbox("Enable Free Camera", &g_enable_free_camera);
-					ImGui::Checkbox("[Legacy] Re-enable ClipPlane overriding", &g_reenable_clipPlane);
-					ImGui::SameLine();
-					HELP_TOOLTIP("(?)", "Re-enable the modification of nearClipPlane & farClipPlane like old versions.");
+					ImGui::Checkbox("Enable ClipPlane overriding", &g_reenable_clipPlane);
+					if (g_reenable_clipPlane) {
+						ImGui::Dummy(ImVec2(40, 0));
+						ImGui::SameLine();
+						ImGui::InputFloat("near clip plane", &g_nearClipPlane);
+
+						ImGui::Dummy(ImVec2(40, 0));
+						ImGui::SameLine();
+						ImGui::InputFloat("far clip plane", &g_farClipPlane);
+					}
 					INPUT_AND_SLIDER_FLOAT("Move Speed", &BaseCamera::moveStep, 0.0f, 0.5f);
 					INPUT_AND_SLIDER_FLOAT("Mouse Speed", &g_free_camera_mouse_speed, 0.0f, 100.0f);
 					INPUT_AND_SLIDER_FLOAT("Camera FOV", &SCCamera::baseCamera.fov, 0.0f, 360.0f);
@@ -472,10 +565,15 @@ namespace SCGUILoop {
 							freeCamSlots[i].lookAt.x = SCCamera::baseCamera.lookAt.x;
 							freeCamSlots[i].lookAt.y = SCCamera::baseCamera.lookAt.y;
 							freeCamSlots[i].lookAt.z = SCCamera::baseCamera.lookAt.z;
+
+							if (freeCamSlots[i].overwriteClipPlane = g_reenable_clipPlane) {
+								freeCamSlots[i].nearClipPlane = g_nearClipPlane;
+								freeCamSlots[i].farClipPlane = g_farClipPlane;
+							}
 						}
 						ImGui::SameLine();
 
-						// --- SLOT BUTTON ---
+						// --- SLOT BUTTON (apply) ---
 						std::string slotName;
 						if (!freeCamSlots[i].name.empty()) {
 							slotName = freeCamSlots[i].name;
@@ -504,6 +602,10 @@ namespace SCGUILoop {
 								SCCamera::baseCamera.lookAt.x = freeCamSlots[i].lookAt.x;
 								SCCamera::baseCamera.lookAt.y = freeCamSlots[i].lookAt.y;
 								SCCamera::baseCamera.lookAt.z = freeCamSlots[i].lookAt.z;
+
+								g_reenable_clipPlane = freeCamSlots[i].overwriteClipPlane;
+								g_nearClipPlane = freeCamSlots[i].nearClipPlane;
+								g_farClipPlane = freeCamSlots[i].farClipPlane;
 							}
 						}
 						ImGui::PopStyleColor();
@@ -557,6 +659,34 @@ namespace SCGUILoop {
 				}
 			}
 
+			if (ImGui::CollapsingHeader("MagicaCloth"), ImGuiTreeNodeFlags_DefaultOpen) {
+				ImGui::Checkbox("Override MagicaCloth", &g_magicacloth_override);
+				ImGui::SameLine();
+				HELP_TOOLTIP("(?)", "数据在模型加载时被更新。\nData is only updated when loading models.");
+
+				ImGui::Text("Show MagicaCloth logs");
+				ImGui::SameLine();
+				ImGui::Checkbox("(cloth)", &g_magicacloth_output_cloth);
+				ImGui::SameLine();
+				ImGui::Checkbox("(controller)", &g_magicacloth_output_controller);
+
+				if (g_magicacloth_override) {
+					INPUT_AND_SLIDER_FLOAT("Inertia.min", &g_magicacloth_inertia_min, 0.0f, 1.0f);
+					INPUT_AND_SLIDER_FLOAT("Inertia.max", &g_magicacloth_inertia_max, 0.0f, 1.0f);
+					INPUT_AND_SLIDER_FLOAT("Radius.min", &g_magicacloth_radius_min, 0.0f, 1.0f);
+					INPUT_AND_SLIDER_FLOAT("Radius.max", &g_magicacloth_radius_max, 0.0f, 1.0f);
+					ImGui::InputFloat("Angle.LimitAngle", &g_magicacloth_limitAngle);
+					ImGui::InputFloat("Damping", &g_magicacloth_damping);
+					ImGui::InputFloat("MovementSpeedLimit", &g_magicacloth_movementSpeedLimit);
+					ImGui::InputFloat("RotationSpeedLimit", &g_magicacloth_rotationSpeedLimit);
+					ImGui::InputFloat("LocalMovementSpeedLimit", &g_magicacloth_localMovementSpeedLimit);
+					ImGui::InputFloat("LocalRotationSpeedLimit", &g_magicacloth_localRotationSpeedLimit);
+					ImGui::InputFloat("ParticleSpeedLimit", &g_magicacloth_particleSpeedLimit);
+					ImGui::InputFloat("Spring.LimitDistance", &g_magicacloth_springLimitDistance);
+					ImGui::InputFloat("Spring.SpringNoise", &g_magicacloth_springNoise);
+				}
+			}
+
 			if (ImGui::CollapsingHeader("Assets"), ImGuiTreeNodeFlags_DefaultOpen) {
 				ImGui::Checkbox("Use quick probing for unknown shaders", &g_shader_quickprobing);
 				ImGui::SameLine();
@@ -585,6 +715,14 @@ namespace SCGUILoop {
 				}
 			}
 
+			if (ImGui::CollapsingHeader("Legacy", ImGuiTreeNodeFlags_None)) {
+				ImGui::Checkbox("Live Allow Same Idol (Dangerous)", &g_allow_same_idol);
+				ImGui::SameLine();
+				HELP_TOOLTIP("(?)", "影分身术！\n允许在 Live 中选择同一人。\n（此模式的编组数据会上传，请小心你的号）");
+				ImGui::SameLine();
+				HELP_TOOLTIP("(?)", "This feature can be replaced by 'Override MV unit idols'.");
+			}
+
 			if (ImGui::CollapsingHeader("Devs", ImGuiTreeNodeFlags_None)) {
 #ifdef __TOOL_HOOK_NETWORKING__
 				ImGui::Checkbox("Output networking calls", &tools::output_networking_calls);
@@ -602,6 +740,6 @@ namespace SCGUILoop {
 		ImGui::End();
 		if (g_enable_chara_param_edit) charaParamEditLoop();
 		if (g_save_and_replace_costume_changes) savedCostumeDataLoop();
-		if (g_save_and_replace_costume_changes && g_overrie_mv_unit_idols) overrideMvUnitIdolLoop();
+		if (g_overrie_mv_unit_idols) overrideMvUnitIdolLoop();
 	}
 }

@@ -31,6 +31,7 @@
   - 允许相同偶像登场
   - 手动编辑登场偶像，可以选择未解锁偶像
 - 角色身体参数实时修改，可修改 身高、头部、胸部、手臂、手掌 大小 **(在 GUI 中修改)**
+- 运行时模型贴图提取和替换
 
 
 
@@ -88,8 +89,10 @@
 
 ## 自由视角操作方法
 
+> 下述为默认按键，具体按键可以通过配置文件进行自定义
+
 - 移动: `W`, `S`, `A`, `D`
-- 上移: `Space`，下移: `Ctrl`
+- 上移: `Space` （插件v1.3.6开始分发的配置文件中重载为 `Alt`），下移: `Ctrl`
 - 摄像头复位: `R`
 
 - 视角转动: 
@@ -102,12 +105,65 @@
   - 或者鼠标滚轮
 
 
+ ### 自由视角按键设置
+
+- 所有配置项同样位于 `scsp-config.json` 文件中
+- 由于游戏v2.9.0更新了键盘操作，该插件既往默认的自由视角上移按键 `Space` 从插件v1.3.6开始分发的配置文件中修改为 `Alt`，但若配置文件没有修改，默认仍保持 `Space` 不变
+
+| 配置项                       | 默认值                     |
+| --------------------------- | ------------------------- |
+| key_w_camera_forward        | `W`                       |
+| key_s_camera_back           | `S`                       |
+| key_a_camera_left           | `A`                       |
+| key_d_camera_right          | `D`                       |
+| key_ctrl_camera_down        | `17` (ctrl)               |
+| key_space_camera_up         | `18` (alt)                |
+| key_up_cameralookat_up      | `38` (↑)                  |
+| key_down_cameralookat_down  | `40` (↓)                  |
+| key_left_cameralookat_left  | `37` (←)                  |
+| key_right_cameralookat_right| `39` (→)                  |
+| key_q_camera_fov_increase   | `Q`                       |
+| key_e_camera_fov_decrease   | `E`                       |
+| key_r_camera_reset          | `R`                       |
+| key_192_camera_mouseMove    | `192` (`` ` ``, backtick) |
+
+
+JSON值说明：对于按键设置接受以下两种类型的值：
+- `char[1]` 单字节字符串，即用双引号包绕的单个字母或数字，表示相应的按键，如 `"W"` 表示W键
+- `int` 整数数值，直接绑定到相应的 windows virtual key，可参考 https://learn.microsoft.com/zh-cn/windows/win32/inputdev/virtual-key-codes
+
 
  # Live MV 功能说明
 
 - 在开启 `Save & Replace costume changes` 选项后打开后可以记录所有服装变化，打开游戏内的试用按钮后也可以记录未解锁的服装，或在DressOrder界面中选择私服，并在MV播放时自动应用所记录的服装信息；在子窗口 "Saved Costume Data" 中可以通过 `Remove` 按钮移除不需要的记录以取消
 - 在开启 `Save & Replace costume changes` 后再开启 `Override MV unit idols` 选项，在 "Override MvUnit Idols" 子窗口中通过 `Slot X` 按钮进行保存上一次修改时的服装信息，不同槽位可以记录同一个偶像以实现相同偶像登场并使用不同服装，无记录的位置将继承当前编队中的原始信息
 - "Override MvUnit Idols" 子窗口中可以通过点击数据直接编辑JSON数据进行手动修改（备注：当直接编辑`CharaId`时，建议使用`1`（默认）作为`HairId`的值以避免游戏卡住）
+
+
+# Magica Cloth 相关设置
+
+所有相关设置均可在游戏中通过GUI进行修改，以下在 `scsp-config.json` 配置文件中的值只影响初始化。
+
+具体属性说明可参考官方文档：https://magicasoft.jp/mc2_about/
+
+| 配置项                               | 默认值及说明                   |
+| ----------------------------------- | ---------------------------- |
+| magicacloth_override                | `false`                      |
+| magicacloth_inertia_min †           | `1.0f`                       |
+| magicacloth_inertia_max †           | `1.0f`                       |
+| magicacloth_radius_min †            | `0.002f`                     |
+| magicacloth_radius_max †            | `0.028f`                     |
+| magicacloth_damping                 | `0.01f`                      |
+| magicacloth_movementSpeedLimit      | `10.0f`                      |
+| magicacloth_rotationSpeedLimit      | `1440.0f`                    |
+| magicacloth_localMovementSpeedLimit | `10.0f`                      |
+| magicacloth_localRotationSpeedLimit | `1440.0f`                    |
+| magicacloth_particleSpeedLimit      | `40.0f`                      |
+| magicacloth_limitAngle              | `90.0f`                      |
+| magicacloth_springLimitDistance     | `0.5f`                       |
+| magicacloth_springNoise             | `0.1f`                       |
+
+† 此处`Inertia`和`Radius`属性来自`MagicaClothController`
 
 
 # 如何汉化
@@ -145,6 +201,12 @@
 
 ### 歌词和另一部分 UI 文本 dump
 将 `scsp-config.json` 内 `dumpUntransLyrics` 和 `dumpUntransLocal2` 设置为 `true`，然后打开游戏。插件会实时将未翻译的部分 dump 到 Json 中。
+
+
+# 运行时模型贴图提取和替换
+
+- 提取：在GUI中勾选 `Extract assets of：` 以及相应的筛选器后，会在程序目录的 `TextureDump` 文件夹下分类存放提取的纹理。
+- 替换：在程序的 `scsp_localify\textures` 文件夹内放置与提取得到的纹理相同名称的图片会自动在启动时加载并替换。
 
 
 # 如何编译

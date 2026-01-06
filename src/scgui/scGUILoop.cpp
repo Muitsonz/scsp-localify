@@ -265,11 +265,11 @@ namespace SCGUILoop {
 			ImGui::SameLine();
 			HELP_TOOLTIP("(?)", "影分身术！\n允许在 Live 中选择同一人。\n（此模式的编组数据会上传，请小心你的号）")
 
-			ImGui::Checkbox("Enable Character Parameter Editor", &g_enable_chara_param_edit);
+				ImGui::Checkbox("Enable Character Parameter Editor", &g_enable_chara_param_edit);
 			ImGui::SameLine();
 			HELP_TOOLTIP("(?)", "启用角色身体参数编辑器")
 
-			ImGui::Checkbox("Unlock Stories", &g_unlock_PIdol_and_SChara_events);
+				ImGui::Checkbox("Unlock Stories", &g_unlock_PIdol_and_SChara_events);
 
 			if (ImGui::CollapsingHeader("Resolution Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
 				ImGui::Text("Window Resolution Settings");
@@ -338,7 +338,27 @@ namespace SCGUILoop {
 			}
 
 			if (ImGui::CollapsingHeader("MagicaCloth"), ImGuiTreeNodeFlags_DefaultOpen) {
-				ImGui::Checkbox("Override MagicaCloth", &g_override_magicacloth);
+				ImGui::Checkbox("Override MagicaCloth", &g_magicacloth_override);
+				ImGui::Text("Show MagicaCloth logs");
+				ImGui::SameLine();
+				ImGui::Checkbox("(cloth)", &g_magicacloth_output_cloth);
+				ImGui::SameLine();
+				ImGui::Checkbox("(controller)", &g_magicacloth_output_controller);
+				if (g_magicacloth_override) {
+					INPUT_AND_SLIDER_FLOAT("Inertia.min", &g_magicacloth_inertia_min, 0.0f, 1.0f);
+					INPUT_AND_SLIDER_FLOAT("Inertia.max", &g_magicacloth_inertia_max, 0.0f, 1.0f);
+					INPUT_AND_SLIDER_FLOAT("Radius.min", &g_magicacloth_radius_min, 0.0f, 1.0f);
+					INPUT_AND_SLIDER_FLOAT("Radius.max", &g_magicacloth_radius_max, 0.0f, 1.0f);
+					ImGui::InputFloat("Angle.LimitAngle", &g_magicacloth_limitAngle);
+					ImGui::InputFloat("Damping", &g_magicacloth_damping);
+					ImGui::InputFloat("MovementSpeedLimit", &g_magicacloth_movementSpeedLimit);
+					ImGui::InputFloat("RotationSpeedLimit", &g_magicacloth_rotationSpeedLimit);
+					ImGui::InputFloat("LocalMovementSpeedLimit", &g_magicacloth_localMovementSpeedLimit);
+					ImGui::InputFloat("LocalRotationSpeedLimit", &g_magicacloth_localRotationSpeedLimit);
+					ImGui::InputFloat("ParticleSpeedLimit", &g_magicacloth_particleSpeedLimit);
+					ImGui::InputFloat("Spring.LimitDistance", &g_magicacloth_springLimitDistance);
+					ImGui::InputFloat("Spring.SpringNoise", &g_magicacloth_springNoise);
+				}
 			}
 
 			if (ImGui::CollapsingHeader("Assets"), ImGuiTreeNodeFlags_DefaultOpen) {

@@ -336,7 +336,22 @@ extern bool g_extract_asset_renderer;
 extern bool g_extract_asset_sprite;
 extern bool g_extract_asset_texture2d;
 extern bool g_extract_asset_log_unknown_asset;
-extern bool g_override_magicacloth;
+extern bool g_magicacloth_override;
+extern bool g_magicacloth_output_cloth;
+extern bool g_magicacloth_output_controller;
+extern float g_magicacloth_inertia_min;
+extern float g_magicacloth_inertia_max;
+extern float g_magicacloth_radius_min;
+extern float g_magicacloth_radius_max;
+extern float g_magicacloth_damping;
+extern float g_magicacloth_movementSpeedLimit;
+extern float g_magicacloth_rotationSpeedLimit;
+extern float g_magicacloth_localMovementSpeedLimit;
+extern float g_magicacloth_localRotationSpeedLimit;
+extern float g_magicacloth_particleSpeedLimit;
+extern float g_magicacloth_limitAngle;
+extern float g_magicacloth_springLimitDistance;
+extern float g_magicacloth_springNoise;
 
 
 namespace tools {

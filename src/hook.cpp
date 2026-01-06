@@ -2812,8 +2812,12 @@ namespace
 	_txt_field_name_->value = _val_value_;
 
 	void ModifyMagicaCloth(Il2CppObject* cloth) {
-		auto name = il2cpp_symbols::get_unity_gameobject_fullname(cloth);
-		std::cout << "ModifyMagicaCloth: " << name << std::endl;
+		if (g_magicacloth_output_cloth) {
+			auto name = il2cpp_symbols::get_unity_gameobject_fullname(cloth);
+			std::cout << "ModifyMagicaCloth: " << name << std::endl;
+		}
+
+		if (!g_magicacloth_override) return;
 
 		static auto klass_MagicaCloth = MAGICACLOTH_GET_CLASS("MagicaCloth");
 		static auto klass_ClothSerializeData = MAGICACLOTH_GET_CLASS("ClothSerializeData");
@@ -2828,49 +2832,51 @@ namespace
 		static auto field_ClothSerializeData_damping = klass_ClothSerializeData->GetField("damping");
 
 		auto damping = field_ClothSerializeData_damping->GetValueObject<managed::MagicaCloth2::CurveSerializeData*>(sdata);
-		damping->value = 0.01f;
+		damping->value = g_magicacloth_damping;
 
 		static auto field_ClothSerializeData_inertiaConstraint = klass_ClothSerializeData->GetField("inertiaConstraint");
 		auto inertiaConstraint = field_ClothSerializeData_inertiaConstraint->GetValueObject<managed::MagicaCloth2::InertiaConstraintSerializeData*>(sdata);
-		MAGICACLOTH_SET_INERTIA_LIMIT(movementSpeedLimit, 10.0f);
-		MAGICACLOTH_SET_INERTIA_LIMIT(rotationSpeedLimit, 1440.0f);
-		MAGICACLOTH_SET_INERTIA_LIMIT(localMovementSpeedLimit, 10.0f);
-		MAGICACLOTH_SET_INERTIA_LIMIT(localRotationSpeedLimit, 1440.0f);
-		MAGICACLOTH_SET_INERTIA_LIMIT(particleSpeedLimit, 40.0f);
+		MAGICACLOTH_SET_INERTIA_LIMIT(movementSpeedLimit, g_magicacloth_movementSpeedLimit);
+		MAGICACLOTH_SET_INERTIA_LIMIT(rotationSpeedLimit, g_magicacloth_rotationSpeedLimit);
+		MAGICACLOTH_SET_INERTIA_LIMIT(localMovementSpeedLimit, g_magicacloth_localMovementSpeedLimit);
+		MAGICACLOTH_SET_INERTIA_LIMIT(localRotationSpeedLimit, g_magicacloth_localRotationSpeedLimit);
+		MAGICACLOTH_SET_INERTIA_LIMIT(particleSpeedLimit, g_magicacloth_particleSpeedLimit);
 
 		static auto field_ClothSerializeData_angleLimitConstraint = klass_ClothSerializeData->GetField("angleLimitConstraint");
 		auto angleLimitConstraint = field_ClothSerializeData_angleLimitConstraint->GetValueObject(sdata);
 		static auto field_AngleConstraint_LimitSerializeData_limitAngle = klass_AngleConstraint_LimitSerializeData->GetField("limitAngle");
 		auto limitAngle = field_AngleConstraint_LimitSerializeData_limitAngle->GetValueObject<managed::MagicaCloth2::CurveSerializeData*>(angleLimitConstraint);
-		limitAngle->value = 90.0f;
+		limitAngle->value = g_magicacloth_limitAngle;
 
 		static auto field_ClothSerializeData_springConstraint = klass_ClothSerializeData->GetField("springConstraint");
 		auto springConstraint = field_ClothSerializeData_springConstraint->GetValueObject<managed::MagicaCloth2::SpringConstraintSerializeData*>(sdata);
-		springConstraint->limitDistance = 0.5f;
-		springConstraint->springNoise = 0.1f;
+		springConstraint->limitDistance = g_magicacloth_springLimitDistance;
+		springConstraint->springNoise = g_magicacloth_springNoise;
 	}
 
 	HOOK_ORIG_TYPE MagicaCloth_BuildAndRun_orig;
 	bool MagicaCloth_BuildAndRun_hook(void* _this) {
-		if (g_override_magicacloth)
-			ModifyMagicaCloth((Il2CppObject*)_this);
+		ModifyMagicaCloth((Il2CppObject*)_this);
 		return HOOK_CAST_CALL(bool, MagicaCloth_BuildAndRun)(_this);
 	}
 
 	HOOK_ORIG_TYPE MagicaCloth_SetParameterChange_orig;
 	void MagicaCloth_SetParameterChange_hook(void* _this) {
-		if (g_override_magicacloth)
-			ModifyMagicaCloth((Il2CppObject*)_this);
+		ModifyMagicaCloth((Il2CppObject*)_this);
 		HOOK_CAST_CALL(void, MagicaCloth_SetParameterChange)(_this);
 	}
 
 	HOOK_ORIG_TYPE MagicaClothController_get_Inertia_orig;
 	void* MagicaClothController_get_Inertia_hook(void* _this, MethodInfo* mi) {
 		auto value = (managed::MagicaCloth2::BodyParamFloatProperty*)HOOK_CAST_CALL(void*, MagicaClothController_get_Inertia)(_this, mi);
-		if (g_override_magicacloth && mi->IsName("get_Inertia")) {
-			printf("> dump MagicaClothController_get_Inertia_hook|value\n");
-			value->MinValue = 1.0f;
-			value->MaxValue = 1.0f;
+		if (mi->IsName("get_Inertia")) {
+			if (g_magicacloth_output_controller) {
+				printf("MagicaClothController_get_Inertia_hook\n");
+			}
+			if (g_magicacloth_override) {
+				value->MinValue = g_magicacloth_inertia_min;
+				value->MaxValue = g_magicacloth_inertia_max;
+			}
 		}
 		return value;
 	}
@@ -2878,36 +2884,37 @@ namespace
 	HOOK_ORIG_TYPE MagicaClothController_get_Radius_orig;
 	void* MagicaClothController_get_Radius_hook(void* _this, MethodInfo* mi) {
 		auto value = (managed::MagicaCloth2::BodyParamFloatProperty*)HOOK_CAST_CALL(void*, MagicaClothController_get_Radius)(_this, mi);
-		if (g_override_magicacloth && mi->IsName("get_Radius")) {
-			printf("> dump MagicaClothController_get_Radius_hook|value\n");
-			value->MinValue = 0.002f;
-			value->MaxValue = 0.028f;
+		if (mi->IsName("get_Radius")) {
+			if (g_magicacloth_output_controller) {
+				printf("MagicaClothController_get_Radius_hook\n");
+			}
+			if (g_magicacloth_override) {
+				value->MinValue = g_magicacloth_radius_min;
+				value->MaxValue = g_magicacloth_radius_max;
+			}
 		}
 		return value;
 	}
 
 	HOOK_ORIG_TYPE MagicaClothController_Awake_orig;
 	void MagicaClothController_Awake_hook(Il2CppObject* _this) {
-		printf("MagicaClothController_Awake_hook\n");
 		HOOK_CAST_CALL(void, MagicaClothController_Awake)(_this);
 
-		auto klass = il2cpp_object_get_class(_this);
-		auto method_get_Inertia = il2cpp_class_get_method_from_name(klass, "get_Inertia", 0);
-		if (method_get_Inertia != nullptr) {
-			auto inertia = method_get_Inertia->Invoke<managed::MagicaCloth2::BodyParamFloatProperty*>(_this, {});
-			PRINT(inertia->MinValue);
-			PRINT(inertia->MaxValue);
-			inertia->MinValue = 1.0f;
-			inertia->MaxValue = 1.0f;
+		if (g_magicacloth_output_controller) {
+			printf("MagicaClothController_Awake_hook\n");
 		}
+
+		static auto klass = il2cpp_symbols_logged::get_class("PRISM.Module.CustomMagicaCloth.dll", "PRISM.Module.CustomMagicaCloth", "MagicaClothController");
+		static auto method_get_Inertia = il2cpp_class_get_method_from_name(klass, "get_Inertia", 0);
 		auto method_get_Radius = il2cpp_class_get_method_from_name(klass, "get_Radius", 0);
-		if (method_get_Radius != nullptr) {
-			auto radius = method_get_Radius->Invoke<managed::MagicaCloth2::BodyParamFloatProperty*>(_this, {});
-			PRINT(radius->MinValue);
-			PRINT(radius->MaxValue);
-			radius->MinValue = 0.002f;
-			radius->MaxValue = 0.028f;
-		}
+
+		auto inertia = method_get_Inertia->Invoke<managed::MagicaCloth2::BodyParamFloatProperty*>(_this, {});
+		inertia->MinValue = g_magicacloth_inertia_min;
+		inertia->MaxValue = g_magicacloth_inertia_max;
+
+		auto radius = method_get_Radius->Invoke<managed::MagicaCloth2::BodyParamFloatProperty*>(_this, {});
+		radius->MinValue = g_magicacloth_radius_min;
+		radius->MaxValue = g_magicacloth_radius_max;
 	}
 
 

@@ -62,6 +62,23 @@ bool g_extract_asset_renderer = false;
 bool g_extract_asset_sprite = false;
 bool g_extract_asset_texture2d = false;
 bool g_extract_asset_log_unknown_asset = false;
+bool g_magicacloth_override = false;
+bool g_magicacloth_output_cloth = true;
+bool g_magicacloth_output_controller = false;
+float g_magicacloth_inertia_min = 1.0f;
+float g_magicacloth_inertia_max = 1.0f;
+float g_magicacloth_radius_min = 0.002f;
+float g_magicacloth_radius_max = 0.028f;
+float g_magicacloth_damping = 0.01f;
+float g_magicacloth_movementSpeedLimit = 10.0f;
+float g_magicacloth_rotationSpeedLimit = 1440.0f;
+float g_magicacloth_localMovementSpeedLimit = 10.0f;
+float g_magicacloth_localRotationSpeedLimit = 1440.0f;
+float g_magicacloth_particleSpeedLimit = 40.0f;
+float g_magicacloth_limitAngle = 90.0f;
+float g_magicacloth_springLimitDistance = 0.5f;
+float g_magicacloth_springNoise = 0.1f;
+
 
 std::filesystem::path g_localify_base("scsp_localify");
 constexpr const char ConfigJson[] = "scsp-config.json";
@@ -129,6 +146,10 @@ namespace
 	} else { \
 		SCCamera::CameraControlKeyMapping[_VAL_MAP_KEY_] = _VAL_MAP_KEY_; \
 	}
+
+#define READ_JSON_FLOAT(_txt_var_name_no_prefix_) \
+	if (document.HasMember(#_txt_var_name_no_prefix_)) \
+	{ g_##_txt_var_name_no_prefix_ = document[#_txt_var_name_no_prefix_].GetFloat(); }
 
 	std::vector<std::string> read_config(std::vector<std::string>& logs)
 	{
@@ -251,6 +272,23 @@ namespace
 			ReadJsonKeyBinding("key_e_camera_fov_decrease", KEY_E);
 			ReadJsonKeyBinding("key_r_camera_reset", KEY_R);
 			ReadJsonKeyBinding("key_192_camera_mouseMove", KEY_192);
+
+			if (document.HasMember("magicacloth_override")) {
+				g_magicacloth_override = document["magicacloth_override"].GetBool();
+			}
+			READ_JSON_FLOAT(magicacloth_inertia_min);
+			READ_JSON_FLOAT(magicacloth_inertia_max);
+			READ_JSON_FLOAT(magicacloth_radius_min);
+			READ_JSON_FLOAT(magicacloth_radius_max);
+			READ_JSON_FLOAT(magicacloth_damping);
+			READ_JSON_FLOAT(magicacloth_movementSpeedLimit);
+			READ_JSON_FLOAT(magicacloth_rotationSpeedLimit);
+			READ_JSON_FLOAT(magicacloth_localMovementSpeedLimit);
+			READ_JSON_FLOAT(magicacloth_localRotationSpeedLimit);
+			READ_JSON_FLOAT(magicacloth_particleSpeedLimit);
+			READ_JSON_FLOAT(magicacloth_limitAngle);
+			READ_JSON_FLOAT(magicacloth_springLimitDistance);
+			READ_JSON_FLOAT(magicacloth_springNoise);
 		}
 
 		config_stream.close();

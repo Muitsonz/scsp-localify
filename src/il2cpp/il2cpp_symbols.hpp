@@ -7,6 +7,7 @@ typedef struct Il2CppObject Il2CppObject;
 typedef struct Il2CppString Il2CppString;
 typedef struct MethodInfo MethodInfo;
 typedef uint32_t il2cpp_array_size_t;
+typedef struct FieldInfo FieldInfo;
 
 // UnityEngine.Color
 struct Color_t
@@ -202,15 +203,6 @@ struct ParameterInfo
 	const Il2CppType* parameter_type;
 };
 
-struct FieldInfo
-{
-	const char* name;
-	const Il2CppType* type;
-	uintptr_t parent;
-	int32_t offset;
-	uint32_t token;
-};
-
 typedef struct PropertyInfo
 {
 	Il2CppClass* parent;
@@ -358,6 +350,10 @@ typedef struct Il2CppClass // unity 6000.0.45f1
 	uint8_t is_vtable_initialized : 1;
 	uint8_t is_byref_like : 1;
 	VirtualInvokeData vtable[0];
+
+
+	FieldInfo* GetField(const char* name);
+	Il2CppClass* GetNestedClass(const char* name);
 } Il2CppClass;
 
 
@@ -455,7 +451,6 @@ typedef Il2CppReflectionType* (*il2cpp_type_get_object_t)(const void* type);
 typedef void* (*il2cpp_gchandle_new_t)(void* obj, bool pinned);
 typedef void (*il2cpp_gchandle_free_t)(void* gchandle);
 typedef void* (*il2cpp_gchandle_get_target_t)(void* gchandle);
-typedef Il2CppType* (*il2cpp_reflection_type_get_type_t)(Il2CppReflectionType* reflType);
 typedef void* (*il2cpp_class_from_type_t)(const Il2CppType* type);
 typedef void (*il2cpp_runtime_class_init_t)(void* klass);
 typedef void* (*il2cpp_runtime_invoke_t)(MethodInfo* method, void* obj, void** params, Il2CppObject** exc);
@@ -511,7 +506,6 @@ extern il2cpp_type_get_object_t il2cpp_type_get_object;
 extern il2cpp_gchandle_new_t il2cpp_gchandle_new;
 extern il2cpp_gchandle_free_t il2cpp_gchandle_free;
 extern il2cpp_gchandle_get_target_t il2cpp_gchandle_get_target;
-extern il2cpp_reflection_type_get_type_t il2cpp_reflection_type_get_type;
 extern il2cpp_class_from_type_t il2cpp_class_from_type;
 extern il2cpp_runtime_class_init_t il2cpp_runtime_class_init;
 extern il2cpp_runtime_invoke_t il2cpp_runtime_invoke;
@@ -536,6 +530,22 @@ extern il2cpp_string_chars_t il2cpp_string_chars;
 extern il2cpp_string_length_t il2cpp_string_length;
 extern il2cpp_type_get_class_or_element_class_t il2cpp_type_get_class_or_element_class;
 extern il2cpp_type_get_name_t il2cpp_type_get_name;
+
+struct FieldInfo
+{
+	const char* name;
+	const Il2CppType* type;
+	uintptr_t parent;
+	int32_t offset;
+	uint32_t token;
+
+	template<typename T> void GetNativeValue(Il2CppObject* instance, T* dest) {
+		il2cpp_field_get_value(instance, this, dest);
+	}
+	template<typename T = Il2CppObject*> T GetValueObject(Il2CppObject* instance) {
+		return (T)il2cpp_field_get_value_object(this, instance);
+	}
+};
 
 struct MethodInfo
 {
@@ -693,6 +703,11 @@ namespace il2cpp_symbols
 	const char* il2cpp_method_get_param_type_name(const MethodInfo* mi, uint32_t index);
 
 	template <typename T> T unbox(Il2CppObject* boxed) { return *(T*)il2cpp_object_unbox(boxed); }
+
+	Il2CppClass* get_nested_class(Il2CppClass* klass, const char* nestedClassName);
+
+	// @param pIncludedParentCount: [In] how many parent gameobjects' names should be included, NULL as 0; [Out] how many names are actually used, only returns when not NULL
+	std::string get_unity_gameobject_fullname(Il2CppObject* obj, bool excludeThisName = false, __inout_opt int* pIncludedParentCount = nullptr);
 }
 
 namespace il2cpp_symbols_logged {

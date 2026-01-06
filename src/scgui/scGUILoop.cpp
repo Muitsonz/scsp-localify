@@ -667,6 +667,30 @@ namespace SCGUILoop {
 				}
 			}
 
+			if (ImGui::CollapsingHeader("MagicaCloth"), ImGuiTreeNodeFlags_DefaultOpen) {
+				ImGui::Checkbox("Override MagicaCloth", &g_magicacloth_override);
+				ImGui::Text("Show MagicaCloth logs");
+				ImGui::SameLine();
+				ImGui::Checkbox("(cloth)", &g_magicacloth_output_cloth);
+				ImGui::SameLine();
+				ImGui::Checkbox("(controller)", &g_magicacloth_output_controller);
+				if (g_magicacloth_override) {
+					INPUT_AND_SLIDER_FLOAT("Inertia.min", &g_magicacloth_inertia_min, 0.0f, 1.0f);
+					INPUT_AND_SLIDER_FLOAT("Inertia.max", &g_magicacloth_inertia_max, 0.0f, 1.0f);
+					INPUT_AND_SLIDER_FLOAT("Radius.min", &g_magicacloth_radius_min, 0.0f, 1.0f);
+					INPUT_AND_SLIDER_FLOAT("Radius.max", &g_magicacloth_radius_max, 0.0f, 1.0f);
+					ImGui::InputFloat("Angle.LimitAngle", &g_magicacloth_limitAngle);
+					ImGui::InputFloat("Damping", &g_magicacloth_damping);
+					ImGui::InputFloat("MovementSpeedLimit", &g_magicacloth_movementSpeedLimit);
+					ImGui::InputFloat("RotationSpeedLimit", &g_magicacloth_rotationSpeedLimit);
+					ImGui::InputFloat("LocalMovementSpeedLimit", &g_magicacloth_localMovementSpeedLimit);
+					ImGui::InputFloat("LocalRotationSpeedLimit", &g_magicacloth_localRotationSpeedLimit);
+					ImGui::InputFloat("ParticleSpeedLimit", &g_magicacloth_particleSpeedLimit);
+					ImGui::InputFloat("Spring.LimitDistance", &g_magicacloth_springLimitDistance);
+					ImGui::InputFloat("Spring.SpringNoise", &g_magicacloth_springNoise);
+				}
+			}
+
 			if (ImGui::CollapsingHeader("Assets"), ImGuiTreeNodeFlags_DefaultOpen) {
 				ImGui::Checkbox("Use quick probing for unknown shaders", &g_shader_quickprobing);
 				ImGui::SameLine();

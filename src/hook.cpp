@@ -3494,11 +3494,12 @@ namespace
 					if (1 != il2cpp_method_get_param_count(mi))
 						return false;
 					auto paramKlassName = il2cpp_type_get_name(il2cpp_method_get_param(mi, 0));
-					if ("MstCostumeSet" == paramKlassName)
+					PRINT(paramKlassName);
+					if (0 == strcmp("PRISM.Definitions.MstCostumeSet", paramKlassName))
 						UnitIdol_ctor_MstCostumeSet_addr = mi->methodPointer;
-					else if ("ICharacterCostumeStatus" == paramKlassName)
+					else if (0 == strcmp("PRISM.Module.Networking.ICharacterCostumeStatus", paramKlassName))
 						UnitIdol_ctor_ICharacterCostumeStatus_addr = mi->methodPointer;
-					else if ("UnitIdol" == paramKlassName)
+					else if (0 == strcmp("PRISM.UnitIdol", paramKlassName))
 						UnitIdol_ctor_UnitIdol_addr = mi->methodPointer;
 				}
 				return false;

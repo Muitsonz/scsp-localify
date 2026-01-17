@@ -10,6 +10,7 @@
 #include <cpprest/http_client.h>
 #include <cpprest/filestream.h>
 #include <boost/beast/core/detail/base64.hpp>
+#include <boost/preprocessor/tuple/elem.hpp>
 #include <rapidjson/document.h>
 #include <rapidjson/writer.h>
 #include <rapidjson/filewritestream.h>
@@ -175,6 +176,14 @@ void AddSafetyHook(const char* orig_name, void* orig, void* hook, SafetyHookInli
 	printf(_fmt_##" (%s, %s)\n", _name_##_offset, MH_StatusToString(_name_##stat1), MH_StatusToString(_name_##stat2))
 #endif
 #define ADD_HOOK_1(_name_) ADD_HOOK(_name_, #_name_##" at %p")
+#define HOOK_DEF(_ret_type_, _name_) HOOK_ORIG_TYPE _name_##_orig; _ret_type_ _name_##_hook
+#define HOOK_FIND_AND_ADD_EXPLICITNAME(_txt_name_, _txt_dll_, _txt_namespace_, _txt_class_, _txt_method_, _param_count_) \
+	auto _txt_name_##_addr = il2cpp_symbols_logged::get_method_pointer( \
+		#_txt_dll_, #_txt_namespace_, #_txt_class_, #_txt_method_, _param_count_ \
+	); \
+	ADD_HOOK(_txt_name_, #_txt_name_##" at %p")
+#define HOOK_FIND_AND_ADD(_txt_dll_, _txt_namespace_, _txt_class_, _txt_method_, _param_count_) \
+	HOOK_FIND_AND_ADD_EXPLICITNAME(_txt_class_##_##_txt_method_, _txt_dll_, _txt_namespace_, _txt_class_, _txt_method_, _param_count_)
 #pragma endregion
 
 bool exd = false;
@@ -2898,6 +2907,52 @@ namespace
 	}
 
 
+	HOOK_DEF(void, UnitIdol_ctor_MstCostumeSet)(managed::UnitIdol* _this, void* set) {
+		printf("UnitIdol_ctor_MstCostumeSet\n");
+		HOOK_CAST_CALL(void, UnitIdol_ctor_MstCostumeSet)(_this, set);
+
+		UnitIdol instance;
+		instance.ReadFrom(_this);
+		instance.Print(std::cout);
+	}
+
+	HOOK_DEF(void, UnitIdol_ctor_ICharacterCostumeStatus)(managed::UnitIdol* _this, void* set) {
+		printf("UnitIdol_ctor_ICharacterCostumeStatus\n");
+		return HOOK_CAST_CALL(void, UnitIdol_ctor_ICharacterCostumeStatus)(_this, set);
+
+		UnitIdol instance;
+		instance.ReadFrom(_this);
+		instance.Print(std::cout);
+	}
+
+	HOOK_DEF(void, UnitIdol_ctor_UnitIdol)(managed::UnitIdol* _this, void* unitIdol) {
+		printf("UnitIdol_ctor_UnitIdol\n");
+		return HOOK_CAST_CALL(void, UnitIdol_ctor_UnitIdol)(_this, unitIdol);
+
+		UnitIdol instance;
+		instance.ReadFrom(_this);
+		instance.Print(std::cout);
+	}
+
+	HOOK_DEF(void, UnitIdol_CopyFrom)(managed::UnitIdol* _this, void* unitIdol) {
+		printf("UnitIdol_CopyFrom\n");
+		return HOOK_CAST_CALL(void, UnitIdol_CopyFrom)(_this, unitIdol);
+
+		UnitIdol instance;
+		instance.ReadFrom(_this);
+		instance.Print(std::cout);
+	}
+
+	HOOK_DEF(void, UnitIdol_Deserialize)(void** ref_reader, managed::UnitIdol** ref_value) {
+		printf("UnitIdol_Deserialize\n");
+		return HOOK_CAST_CALL(void, UnitIdol_Deserialize)(ref_reader, ref_value);
+
+		UnitIdol instance;
+		instance.ReadFrom(*ref_value);
+		instance.Print(std::cout);
+	}
+
+
 	void readDMMGameGuardData();
 
 	HOOK_ORIG_TYPE GGIregualDetector_ShowPopup_orig;
@@ -3425,6 +3480,30 @@ namespace
 			"MagicaClothController", "Awake", 0
 		);
 
+		uintptr_t UnitIdol_ctor_MstCostumeSet_addr = 0;
+		uintptr_t UnitIdol_ctor_ICharacterCostumeStatus_addr = 0;
+		uintptr_t UnitIdol_ctor_UnitIdol_addr = 0;
+		il2cpp_symbols::find_method(
+			"PRISM.Legacy.dll", "PRISM", "UnitIdol",
+			[
+				&UnitIdol_ctor_MstCostumeSet_addr,
+				&UnitIdol_ctor_ICharacterCostumeStatus_addr,
+				&UnitIdol_ctor_UnitIdol_addr
+			](const MethodInfo* mi) {
+				if (0 == strcmp(".ctor", il2cpp_method_get_name(mi))) {
+					if (1 != il2cpp_method_get_param_count(mi))
+						return false;
+					auto paramKlassName = il2cpp_type_get_name(il2cpp_method_get_param(mi, 0));
+					if ("MstCostumeSet" == paramKlassName)
+						UnitIdol_ctor_MstCostumeSet_addr = mi->methodPointer;
+					else if ("ICharacterCostumeStatus" == paramKlassName)
+						UnitIdol_ctor_ICharacterCostumeStatus_addr = mi->methodPointer;
+					else if ("UnitIdol" == paramKlassName)
+						UnitIdol_ctor_UnitIdol_addr = mi->methodPointer;
+				}
+				return false;
+			});
+
 #pragma endregion
 		ADD_HOOK(SetResolution, "SetResolution at %p");
 		ADD_HOOK_1(StoryExtensions_IsLocked);
@@ -3497,6 +3576,13 @@ namespace
 		//ADD_HOOK_1(BodyParamFloatProperty__ctor);
 		//ADD_HOOK_1(BodyParamFloatProperty__getValue);
 		ADD_HOOK_1(MagicaClothController_Awake);
+
+		ADD_HOOK_1(UnitIdol_ctor_MstCostumeSet);
+		ADD_HOOK_1(UnitIdol_ctor_ICharacterCostumeStatus);
+		ADD_HOOK_1(UnitIdol_ctor_UnitIdol);
+
+		HOOK_FIND_AND_ADD(PRISM.Legacy.dll, PRISM, UnitIdol, CopyFrom, 1);
+		HOOK_FIND_AND_ADD(PRISM.Legacy.dll, PRISM, UnitIdol, Deserialize, 2);
 
 		tools::AddNetworkingHooks();
 

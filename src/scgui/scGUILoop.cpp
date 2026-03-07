@@ -162,7 +162,7 @@ namespace SCGUILoop {
 	std::function< void(bool isOk, std::string input)> ___inputPopupCallback = nullptr;
 	// don't access this varaible directly
 	char ___inputPopupBuffer[1024]{};
-	void ShowInputPopup(std::string message, std::function<void(bool isOk, std::string input)> callback) {
+	void ShowInputPopup(std::string message, std::string initValue, std::function<void(bool isOk, std::string input)> callback) {
 		if (___inputPopupCallback != nullptr) {
 			std::cerr << "[InputPopup] The popup is already open." << std::endl;
 		}
@@ -170,6 +170,7 @@ namespace SCGUILoop {
 			___inputPopupCallback = callback;
 			___inputPopupMessage = message;
 			___showInputPopup = true;
+			snprintf(___inputPopupBuffer, sizeof(___inputPopupBuffer), "%s", initValue.c_str());
 		}
 	}
 
@@ -696,7 +697,7 @@ namespace SCGUILoop {
 				}
 			}
 
-			if (ImGui::CollapsingHeader("MagicaCloth"), ImGuiTreeNodeFlags_DefaultOpen) {
+			if (ImGui::CollapsingHeader("MagicaCloth", ImGuiTreeNodeFlags_DefaultOpen)) {
 				ImGui::Checkbox("Override MagicaCloth", &g_magicacloth_override);
 				ImGui::SameLine();
 				HELP_TOOLTIP("(?)", "数据在模型加载时被更新。\nData is only updated when loading models.");
@@ -711,7 +712,7 @@ namespace SCGUILoop {
 				ImGui::SameLine();
 				HELP_TOOLTIP("(?)", "并非所有数值均有效。勾选此选项可以了解修改是否被应用。\nNot all values are valid. Checking this can learn if the modification is applied.");
 
-				if (g_magicacloth_override) {
+				if (ImGui::TreeNode("Details")) {
 					INPUT_AND_SLIDER_FLOAT("Inertia.min", &g_magicacloth_inertia_min, 0.0f, 1.0f);
 					INPUT_AND_SLIDER_FLOAT("Inertia.max", &g_magicacloth_inertia_max, 0.0f, 1.0f);
 					INPUT_AND_SLIDER_FLOAT("Radius.min", &g_magicacloth_radius_min, 0.0f, 1.0f);
@@ -725,10 +726,11 @@ namespace SCGUILoop {
 					ImGui::InputFloat("ParticleSpeedLimit", &g_magicacloth_particleSpeedLimit);
 					ImGui::InputFloat("Spring.LimitDistance", &g_magicacloth_springLimitDistance);
 					ImGui::InputFloat("Spring.SpringNoise", &g_magicacloth_springNoise);
+					ImGui::TreePop();
 				}
 			}
 
-			if (ImGui::CollapsingHeader("Assets"), ImGuiTreeNodeFlags_DefaultOpen) {
+			if (ImGui::CollapsingHeader("Assets", ImGuiTreeNodeFlags_DefaultOpen)) {
 				ImGui::Checkbox("Use quick probing for unknown shaders", &g_shader_quickprobing);
 				ImGui::SameLine();
 				HELP_TOOLTIP("(?)", "对不认识的渲染程序启用快速探测。\nUse quick probing for unknwon shaders. (quick upper: 8192)");
@@ -794,11 +796,13 @@ namespace SCGUILoop {
 			if (ImGui::Button("OK", ImVec2(120, 0))) {
 				___inputPopupCallback(true, ___inputPopupBuffer);
 				ImGui::CloseCurrentPopup();
+				___inputPopupCallback = nullptr;
 			}
 			ImGui::SameLine();
 			if (ImGui::Button("Cancel", ImVec2(120, 0))) {
 				___inputPopupCallback(false, "");
 				ImGui::CloseCurrentPopup();
+				___inputPopupCallback = nullptr;
 			}
 			ImGui::EndPopup();
 		}
@@ -812,10 +816,6 @@ namespace SCGUILoop {
 	void PosesLoop() {
 		ImGui::PushID("PosesLoop");
 		if (ImGui::CollapsingHeader("Poses", ImGuiTreeNodeFlags_DefaultOpen)) {
-
-			ImGui::Dummy(ImVec2(40, 0));
-			ImGui::SameLine();
-			ImGui::Text("Known GameObjects");
 
 			// btn Scan idol poses
 			ImGui::Dummy(ImVec2(40, 0));
@@ -846,22 +846,27 @@ namespace SCGUILoop {
 					});
 			}
 
-			// list of scannedGameObjects: [txtDisplayName - btnRename - btnSerialize - btnApply]
+			ImGui::Separator();
+
+			ImGui::Text("Known GameObjects");
+
+			// list of scannedGameObjects: [txtDisplayName - btnSerialize - btnApply]
+			ImGui::Indent();
 			for (int i = 0; i < scannedGameObjects.size(); ++i) {
 				ImGui::PushID(i);
 				auto& data = scannedGameObjects[i];
 				// txtDisplayName
 				ImGui::Text(data.displayName.c_str());
 				ImGui::SameLine();
-				// btnRename
-				if (ImGui::Button("Rename")) {
-					int copiedIndex = i;
-					ShowInputPopup("Enter a new name:", [copiedIndex](bool isOk, std::string input) {
-						if (isOk) {
-							scannedGameObjects[copiedIndex].displayName = input;
-						}
-						});
-				}
+				// // btnRename
+				// if (ImGui::Button("Rename")) {
+				// 	int copiedIndex = i;
+				// 	ShowInputPopup("Enter a new name:", data.displayName, [copiedIndex](bool isOk, std::string input) {
+				// 		if (isOk) {
+				// 			scannedGameObjects[copiedIndex].displayName = input;
+				// 		}
+				// 		});
+				// }
 				ImGui::SameLine();
 				// btnSerialize
 				if (ImGui::Button("Serialize")) {
@@ -907,15 +912,15 @@ namespace SCGUILoop {
 				}
 				ImGui::PopID();
 			}
+			ImGui::Unindent();
 
 			ImGui::Separator();
 
 			// indented header "Cached poses"
-			ImGui::Dummy(ImVec2(40, 0));
-			ImGui::SameLine();
 			ImGui::Text("Cached poses");
 
-			// list of savedTransformOverridingJson: [btnName(select) - btnCopy - btnRemove]
+			// list of savedTransformOverridingJson: [btnName(select) - btnRename - btnCopy - btnRemove]
+			ImGui::Indent();
 			for (int i = 0; i < savedTransformOverridingJson.size(); ++i) {
 				ImGui::PushID(i);
 				// btnName(select), with a different color when selected
@@ -934,6 +939,15 @@ namespace SCGUILoop {
 				}
 				ImGui::PopStyleColor();
 				ImGui::SameLine();
+				if (ImGui::Button("Rename")) {
+					int copiedIndex = i;
+					ShowInputPopup("Enter a new name:", savedTransformOverridingJson[copiedIndex].first, [copiedIndex](bool isOk, std::string input) {
+						if (isOk) {
+							savedTransformOverridingJson[copiedIndex].first = input;
+						}
+						});
+				}
+				ImGui::SameLine();
 				// btnCopy
 				if (ImGui::Button("Copy")) {
 					auto r = WriteClipboard(savedTransformOverridingJson[i].second);
@@ -948,10 +962,9 @@ namespace SCGUILoop {
 				}
 				ImGui::PopID();
 			}
+			ImGui::Unindent();
 
 			// btn Clear cached poses
-			ImGui::Dummy(ImVec2(40, 0));
-			ImGui::SameLine();
 			if (ImGui::Button("Clear cached poses")) {
 				savedTransformOverridingJson.clear();
 			}
@@ -970,9 +983,12 @@ namespace SCGUILoop {
 
 			ImGui::Separator();
 
+			ImGui::Dummy(ImVec2(40, 0));
+			ImGui::SameLine();
 			if (ImGui::Button("Clear all overridings")) {
 				transformOverriding.clear();
 			}
+
 		}
 		ImGui::PopID();
 	}

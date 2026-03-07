@@ -32,7 +32,10 @@ namespace reflection {
 	Il2CppReflectionType* typeof_corlib(const char* namespaze, const char* klassName);
 
 	template<typename T> Il2CppArray* CreateManagedArray(Il2CppClass* elementType, const std::vector<T>& vector);
-	Il2CppArray* CreateManagedTypeArray(const std::vector<Il2CppReflectionType*>& vector);
+	Il2CppArray* CreateManagedTypeArray(const std::vector<const Il2CppReflectionType*>& vector);
+
+	Il2CppClass* MakeGenericType(Il2CppReflectionType* reflType, const std::vector<const Il2CppReflectionType*>& genericArguments);
+	const MethodInfo* MakeGenericMethod(MethodInfo* method, const std::vector<const Il2CppReflectionType*>& genericArguments);
 
 	Il2CppReflectionType* Object_GetType(Il2CppObject* instance);
 
@@ -40,13 +43,19 @@ namespace reflection {
 
 	Il2CppObject* Activator_CreateInstance(Il2CppReflectionType* refl);
 
-	Il2CppString* UnityObject_get_name(Il2CppObject* obj);
+	Il2CppString* UnityObject_get_name(const Il2CppObject* obj);
 
-	Il2CppObject* Component_get_gameObject(Il2CppObject* c);
+	bool UnityObject_op_Implicit(const Il2CppObject* exists);
 
-	Il2CppObject* GameObject_get_transform(Il2CppObject* go);
+	Il2CppObject* Component_get_gameObject(const Il2CppObject* c);
 
-	Il2CppObject* Transform_get_parent(Il2CppObject* transform);
+	Il2CppObject* GameObject_get_transform(const Il2CppObject* go);
+
+	/// @brief public T[] GetComponents<T>()
+	/// @return Component[]
+	Il2CppArray* GameObject_GetComponents(const Il2CppObject* go);
+
+	Il2CppObject* Transform_get_parent(const Il2CppObject* transform);
 
 
 	Il2CppObject* InvokeInTry(const MethodInfo* method, const Il2CppObject* instance, Il2CppObject** params, Il2CppObject** exc, const char* context);
@@ -75,4 +84,6 @@ namespace reflection {
 namespace reflection::helper {
 	std::string ToUtf8(Il2CppString* s);
 	Il2CppObject* GetParentGameObject(Il2CppObject* go);
+	Il2CppClass* GetGenericListClass(Il2CppReflectionType* genericArgument);
+	Il2CppObject* CreateNewList(Il2CppReflectionType* genericArgument);
 }

@@ -81,7 +81,7 @@ namespace debug {
 			(unsigned long long)ctx.R9);
 	}
 
-	void PrintNativeStackTrace(ULONG framesToSkip,  ULONG framesToCapture) {
+	void PrintNativeStackTrace(ULONG framesToSkip, ULONG framesToCapture) {
 		PVOID* backTrace = new PVOID[framesToCapture];
 		RtlCaptureStackBackTrace(0, framesToCapture, backTrace, NULL);
 		for (int i = 0; i < framesToCapture; ++i) {
@@ -165,6 +165,71 @@ bool ReadClipboard(std::string* text) {
 	GlobalUnlock(hData);
 	CloseClipboard();
 	return true;
+}
+
+
+LocalTransform::LocalTransform(const Il2CppObject* transform, bool readtransform) {
+	this->transform = transform;
+	if (transform) {
+		ReadLocalPosition(transform);
+		ReadLocalRotation(transform);
+		ReadLocalScale(transform);
+	}
+}
+
+LocalTransform::LocalTransform(const Il2CppObject* transform, Vector3_t localPosition, Quaternion_t localRotation, Vector3_t localScale) {
+	this->transform = transform;
+	this->localPosition = localPosition;
+	this->localRotation = localRotation;
+	this->localScale = localScale;
+}
+
+void LocalTransform::ReadLocalPosition(const Il2CppObject* transform) {
+	static auto method_Transform_get_localPosition = il2cpp_symbols_logged::get_method(
+		"UnityEngine.CoreModule.dll", "UnityEngine",
+		"Transform", "get_localPosition", 0
+	);
+	localPosition = method_Transform_get_localPosition->Invoke((Il2CppObject*)transform, {})->unbox_value<Vector3_t>();
+}
+
+void LocalTransform::ReadLocalRotation(const Il2CppObject* transform) {
+	static auto method_Transform_get_localRotation = il2cpp_symbols_logged::get_method(
+		"UnityEngine.CoreModule.dll", "UnityEngine",
+		"Transform", "get_localRotation", 0
+	);
+	localRotation = method_Transform_get_localRotation->Invoke((Il2CppObject*)transform, {})->unbox_value<Quaternion_t>();
+}
+
+void LocalTransform::ReadLocalScale(const Il2CppObject* transform) {
+	static auto method_Transform_get_localScale = il2cpp_symbols_logged::get_method(
+		"UnityEngine.CoreModule.dll", "UnityEngine",
+		"Transform", "get_localScale", 0
+	);
+	localScale = method_Transform_get_localScale->Invoke((Il2CppObject*)transform, {})->unbox_value<Vector3_t>();
+}
+
+void LocalTransform::WriteLocalPosition(Il2CppObject* transform) {
+	static auto method_Transform_set_localPosition = il2cpp_symbols_logged::get_method(
+		"UnityEngine.CoreModule.dll", "UnityEngine",
+		"Transform", "set_localPosition", 1
+	);
+	method_Transform_set_localPosition->InvokeAsVoid(transform, { (Il2CppObject*)&localPosition });
+}
+
+void LocalTransform::WriteLocalRotation(Il2CppObject* transform) {
+	static auto method_Transform_set_localRotation = il2cpp_symbols_logged::get_method(
+		"UnityEngine.CoreModule.dll", "UnityEngine",
+		"Transform", "set_localRotation", 1
+	);
+	method_Transform_set_localRotation->InvokeAsVoid(transform, { (Il2CppObject*)&localRotation });
+}
+
+void LocalTransform::WriteLocalScale(Il2CppObject* transform) {
+	static auto method_Transform_set_localScale = il2cpp_symbols_logged::get_method(
+		"UnityEngine.CoreModule.dll", "UnityEngine",
+		"Transform", "set_localScale", 1
+	);
+	method_Transform_set_localScale->InvokeAsVoid(transform, { (Il2CppObject*)&localScale });
 }
 
 
@@ -273,6 +338,160 @@ void UnitIdol::LoadJson(const char* json) {
 		}
 	}
 	return;
+}
+
+
+std::vector<std::pair<const Il2CppObject*, const Il2CppObject*>> GetActiveIdolObjects() {
+	static auto method_SceneManager_get_sceneCount = il2cpp_symbols_logged::get_method(
+		"UnityEngine.CoreModule.dll", "UnityEngine.SceneManagement",
+		"SceneManager", "get_sceneCount", 0
+	);
+	static auto method_SceneManager_GetSceneAt = il2cpp_symbols_logged::get_method(
+		"UnityEngine.CoreModule.dll", "UnityEngine.SceneManagement",
+		"SceneManager", "GetSceneAt", 1
+	);
+	static auto method_Scene_GetRootGameObjects = il2cpp_symbols_logged::get_method(
+		"UnityEngine.CoreModule.dll", "UnityEngine.SceneManagement",
+		"Scene", "GetRootGameObjects", 0
+	);
+
+	std::vector<std::pair<const Il2CppObject*, const Il2CppObject*>> vec{};
+	auto sceneCount = method_SceneManager_get_sceneCount->Invoke(nullptr, {})->unbox_value<int>();
+	for (int sceneIndex = 0; sceneIndex < sceneCount; ++sceneIndex) {
+		auto scene = method_SceneManager_GetSceneAt->Invoke(nullptr, { (Il2CppObject*)&sceneIndex });
+		auto rootObjects = method_Scene_GetRootGameObjects->Invoke((Il2CppObject*)il2cpp_object_unbox(scene), {});
+		int rootObjectsLength = il2cpp_array_length(rootObjects);
+		for (int i = 0; i < rootObjectsLength; ++i) {
+			auto obj = (Il2CppObject*)il2cpp_symbols::array_get_value(rootObjects, i);
+			il2cpp_symbols::EnumerateAllChildrenGameObjects(obj,
+				[&](Il2CppObject* go, Il2CppObject* tf) -> int {
+					auto name = reflection::UnityObject_get_name(go)->ToUtf8String();
+					if (name.starts_with("m_ALL_")) {
+						std::cout << "[GetActiveIdolObjects] " << name << std::endl;
+						vec.emplace_back(go, tf);
+						return -1;
+					}
+					else return 1;
+				}
+			);
+		}
+	}
+	return vec;
+}
+
+#define WRITE_POS_FLOAT(_str_name_, _value_, _default_) \
+	if (std::abs((_value_) - (_default_)) > 1e-5) \
+        value.AddMember(_str_name_, rapidjson::Value((_value_)), allocator)
+
+static void SerializeIdolPoseSubNode(
+	bool isRoot, const Il2CppObject* gameObject, const Il2CppObject* transform,
+	rapidjson::Value& value, rapidjson::Document::AllocatorType& allocator
+) {
+	if (!isRoot) {
+		auto name = reflection::UnityObject_get_name(gameObject)->ToUtf8String();
+		value.AddMember("name", rapidjson::Value(name.c_str(), allocator), allocator);
+
+		LocalTransform localTransform(transform, true);
+		WRITE_POS_FLOAT("px", localTransform.localPosition.x, 0);
+		WRITE_POS_FLOAT("py", localTransform.localPosition.y, 0);
+		WRITE_POS_FLOAT("pz", localTransform.localPosition.z, 0);
+
+		WRITE_POS_FLOAT("rx", localTransform.localRotation.x, 0);
+		WRITE_POS_FLOAT("ry", localTransform.localRotation.y, 0);
+		WRITE_POS_FLOAT("rz", localTransform.localRotation.z, 0);
+		WRITE_POS_FLOAT("rw", localTransform.localRotation.w, 1);
+
+		WRITE_POS_FLOAT("sx", localTransform.localScale.x, 1);
+		WRITE_POS_FLOAT("sy", localTransform.localScale.y, 1);
+		WRITE_POS_FLOAT("sz", localTransform.localScale.z, 1);
+	}
+
+	rapidjson::Value childNode(rapidjson::kArrayType);
+	auto children = il2cpp_symbols::GetChildrenGameObjects((Il2CppObject*)gameObject);
+	for (int i = 0; i < children.size(); ++i) {
+		rapidjson::Value childValue(rapidjson::kObjectType);
+		SerializeIdolPoseSubNode(false, children[i].first, children[i].second, childValue, allocator);
+		childNode.PushBack(childValue, allocator);
+	}
+	value.AddMember("children", childNode, allocator);
+}
+
+std::string SerializeIdolPose(const Il2CppObject* gameObject) {
+	rapidjson::Document doc;
+	auto& value = doc.SetObject();
+	auto& allocator = doc.GetAllocator();
+
+	auto transform = reflection::GameObject_get_transform(gameObject);
+	SerializeIdolPoseSubNode(true, gameObject, transform, value, allocator);
+
+	rapidjson::StringBuffer buffer;
+	rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+	doc.Accept(writer);
+	std::string serialized(buffer.GetString());
+	return serialized;
+}
+
+#define READ_POS_FLOAT(_str_name_, _value_, _default_) \
+    _value_ = value.HasMember(_str_name_) ? value[_str_name_].GetFloat() : (_default_)
+
+static void DeserializeIdolPoseSubNode(
+	bool isRoot, Il2CppObject* gameObject, const Il2CppObject* transform,
+	const rapidjson::Value& value, bool registerToTransformOverriding
+) {
+	if (!isRoot) {
+		LocalTransform localTransform(transform, false);
+
+		READ_POS_FLOAT("px", localTransform.localPosition.x, 0);
+		READ_POS_FLOAT("py", localTransform.localPosition.y, 0);
+		READ_POS_FLOAT("pz", localTransform.localPosition.z, 0);
+		localTransform.WriteLocalPosition((Il2CppObject*)transform);
+
+		READ_POS_FLOAT("rx", localTransform.localRotation.x, 0);
+		READ_POS_FLOAT("ry", localTransform.localRotation.y, 0);
+		READ_POS_FLOAT("rz", localTransform.localRotation.z, 0);
+		READ_POS_FLOAT("rw", localTransform.localRotation.w, 1);
+		localTransform.WriteLocalRotation((Il2CppObject*)transform);
+
+		READ_POS_FLOAT("sx", localTransform.localScale.x, 1);
+		READ_POS_FLOAT("sy", localTransform.localScale.y, 1);
+		READ_POS_FLOAT("sz", localTransform.localScale.z, 1);
+		localTransform.WriteLocalScale((Il2CppObject*)transform);
+
+		if (registerToTransformOverriding) {
+			transformOverriding.emplace((Il2CppObject*)transform, std::make_unique<LocalTransform>(std::move(localTransform)));
+		}
+	}
+
+	if (!value.HasMember("children") || !value["children"].IsArray()) {
+		return;
+	}
+
+	const auto& childrenNodes = value["children"].GetArray();
+	auto childrenObjects = il2cpp_symbols::GetChildrenGameObjects((Il2CppObject*)gameObject);
+	for (const auto& childObject : childrenObjects) {
+		for (const auto& childNode : childrenNodes) {
+			if (!childNode.HasMember("name")) continue;
+			auto name = reflection::UnityObject_get_name(childObject.first)->ToUtf8String();
+			if (std::string(childNode["name"].GetString()) == name) {
+				DeserializeIdolPoseSubNode(false, childObject.first, childObject.second, childNode, registerToTransformOverriding);
+				break;
+			}
+		}
+	}
+}
+
+void DeserializeIdolPose(const std::string& json, Il2CppObject* gameObject, bool registerToTransformOverriding) {
+	rapidjson::Document doc;
+	doc.Parse(json.c_str(), json.size());
+	if (doc.HasParseError()) {
+		std::cerr
+			<< "[DeserializeIdolPose] Parse error: " << rapidjson::GetParseError_En(doc.GetParseError())
+			<< "(at " << doc.GetErrorOffset() << ")"
+			<< std::endl;
+		return;
+	}
+	auto transform = reflection::GameObject_get_transform(gameObject);
+	DeserializeIdolPoseSubNode(true, gameObject, transform, doc, registerToTransformOverriding);
 }
 
 

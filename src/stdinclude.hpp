@@ -73,6 +73,7 @@
 #define HOOK_GET_ORIG(_name_) (_name_##_orig)
 #define HOOK_CAST_CALL(_ret_type_, _name_) (reinterpret_cast<decltype(_name_##_hook)*>(_name_##_orig))
 #endif
+#define HOOK_DEF(_return_type_, _name_) HOOK_ORIG_TYPE _name_##_orig; _return_type_ _name_##_hook
 
 
 #define PRINT(var) std::cout << #var << " = " << var << std::endl;
@@ -87,9 +88,33 @@ namespace debug {
 	void PrintNativeStackTrace(ULONG framesToSkip, ULONG framesToCapture);
 }
 
+// @return remove the callback after call or not; true to remove, false to keep.
+extern std::vector<std::function<bool()>> mainThreadTasks;
 
 bool WriteClipboard(std::string& text);
 bool ReadClipboard(std::string* text);
+
+struct LocalTransform {
+	const Il2CppObject* transform{};
+	Vector3_t localPosition{};
+	Quaternion_t localRotation{};
+	Vector3_t localScale{};
+
+	LocalTransform() {}
+	LocalTransform(const Il2CppObject* transform, bool readTransform);
+	LocalTransform(const Il2CppObject* transform, Vector3_t localPosition, Quaternion_t localRotation, Vector3_t localScale);
+
+	void ReadLocalPosition(const Il2CppObject* transform);
+	void ReadLocalRotation(const Il2CppObject* transform);
+	void ReadLocalScale(const Il2CppObject* transform);
+
+	void WriteLocalPosition(Il2CppObject* transform);
+	void WriteLocalRotation(Il2CppObject* transform);
+	void WriteLocalScale(Il2CppObject* transform);
+};
+extern std::unordered_map<Il2CppObject*, std::unique_ptr<LocalTransform>> transformOverriding;
+// pair { first = displayName, second = jsonText }
+extern std::vector<std::pair<std::string, std::string>> savedTransformOverridingJson;
 
 
 class CharaParam_t {
@@ -309,6 +334,12 @@ enum class ClothForceMode {
 	VelocityAddWithoutDepth = 10,
 	VelocityChangeWithoutDepth = 11
 };
+
+
+// @return (const Il2CppObject* gameObject, const Il2CppObject* transform)[]
+std::vector<std::pair<const Il2CppObject*, const Il2CppObject*>> GetActiveIdolObjects();
+std::string SerializeIdolPose(const Il2CppObject* gameObject);
+void DeserializeIdolPose(const std::string& json, Il2CppObject* gameObject, bool registerToTransformOverriding);
 
 
 extern std::map<int, std::string> swayTypes;

@@ -43,6 +43,7 @@ iM@S SCSP localify plugin.
 | Configuration Item    | Type      | Default Value                         | Description                                            |
 | --------------------- | --------- | ------------------------------------- | ------------------------------------------------------ |
 | enableConsole         | Bool      | `true`                                | Enable console                                         |
+| showStartCommand      | Bool      | `false`                               | Output start command<br>*Note: Personal token is contained in startup args* |
 | enableVSync           | Bool      | `false`                               | Enable vertical sync                                   |
 | maxFps                | Int       | `60`                                  | Maximum frame rate<br>When `enableVSync` is enabled, this configuration is ineffective |
 | 3DResolutionScale | Float | `1.0` | 3D resolution render scale |

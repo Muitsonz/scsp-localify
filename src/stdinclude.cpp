@@ -81,14 +81,81 @@ namespace debug {
 			(unsigned long long)ctx.R9);
 	}
 
-	void PrintNativeStackTrace(ULONG framesToSkip, ULONG framesToCapture) {
-		PVOID* backTrace = new PVOID[framesToCapture];
-		RtlCaptureStackBackTrace(0, framesToCapture, backTrace, NULL);
-		for (int i = 0; i < framesToCapture; ++i) {
-			printf("> %p ", backTrace[i]);
+	static std::vector<const MethodInfo*> managedMethodTable{};
+	static void PrepareManagedMethodAddressTable() {
+		size_t assemblyCount = 0;
+		auto** assemblies = il2cpp_domain_get_assemblies(il2cpp_domain_get(), &assemblyCount);
+
+		for (size_t a = 0; a < assemblyCount; a++) {
+			auto* image = il2cpp_assembly_get_image((void*)assemblies[a]);
+			int classCount = il2cpp_image_get_class_count(image);
+
+			for (int i = 0; i < classCount; i++) {
+				auto* klass = il2cpp_image_get_class(image, i);
+				void* iter = nullptr;
+				const MethodInfo* method = nullptr;
+				while ((method = il2cpp_class_get_methods((void*)klass, &iter))) {
+					if (!method->methodPointer) continue;
+					managedMethodTable.push_back(method);
+				}
+			}
 		}
-		printf("\n");
-		delete[] backTrace;
+
+		std::sort(managedMethodTable.begin(), managedMethodTable.end(),
+			[](const MethodInfo* a, const MethodInfo* b) {
+				return a->methodPointer < b->methodPointer;
+			});
+	}
+	static const MethodInfo* ResolveAddress(uintptr_t pc) {
+		auto it = std::upper_bound(managedMethodTable.begin(), managedMethodTable.end(), pc,
+			[](uintptr_t val, const MethodInfo* m) {
+				return val < m->methodPointer;
+			});
+
+		if (it == managedMethodTable.begin()) return nullptr;
+		return *--it;
+	}
+	static std::string FormatMethodInfo(const MethodInfo* method) {
+		const char* ns = il2cpp_class_get_namespace((void*)method->klass);
+		const char* className = il2cpp_class_get_name((void*)method->klass);
+
+		std::string result;
+		if (ns && *ns)
+			result = std::string(ns) + "." + className + "::" + method->name;
+		else
+			result = std::string(className) + "::" + method->name;
+
+		result += "(";
+		for (uint8_t i = 0; i < method->parameters_count; i++) {
+			if (i > 0) result += ", ";
+			const char* paramTypeName = il2cpp_symbols::il2cpp_method_get_param_type_name(method, i);
+			result += paramTypeName ? paramTypeName : "?";
+		}
+		result += ")";
+
+		return result;
+	}
+	static void EnsureManagedMethodTable() {
+		if (!managedMethodTable.empty()) return;
+		PrepareManagedMethodAddressTable();
+	}
+
+	void PrintManagedStackTrace(ULONG framesToSkip, ULONG framesToCapture) {
+		EnsureManagedMethodTable();
+		
+		std::vector<PVOID> backTrace(framesToCapture);
+		ULONG captured = RtlCaptureStackBackTrace(framesToSkip, framesToCapture, backTrace.data(), NULL);
+
+		printf("====== PrintManagedStackTrace ======\n");
+		for (ULONG i = 0; i < captured; i++) {
+			uintptr_t pc = reinterpret_cast<uintptr_t>(backTrace[i]);
+			const MethodInfo* method = ResolveAddress(pc);
+
+			if (method)
+				printf("  %p | %s\n", backTrace[i], FormatMethodInfo(method).c_str());
+			else
+				printf("  %p\n", backTrace[i]);
+		}
 	}
 }
 

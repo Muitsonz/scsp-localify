@@ -2175,6 +2175,7 @@ namespace
 		}
 		HOOK_CAST_CALL(void*, LiveMVStartData_ctor)(_this, mvStage, onStageIdols, cameraworkConfig, vocalSeparatedMode, renderingDynamicRange, soundEffectMode, isSortIdols);
 		ModifyOnStageIdols(onStageIdols);
+		debug::PrintManagedStackTrace();
 	}
 
 	HOOK_ORIG_TYPE RunwayEventStartData_ctor_orig;

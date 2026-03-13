@@ -1,5 +1,8 @@
 #include <stdinclude.hpp>
 
+il2cpp_domain_get_assemblies_t il2cpp_domain_get_assemblies;
+il2cpp_image_get_class_count_t il2cpp_image_get_class_count;
+il2cpp_image_get_class_t il2cpp_image_get_class;
 il2cpp_string_new_utf16_t il2cpp_string_new_utf16;
 il2cpp_string_new_t il2cpp_string_new;
 il2cpp_domain_get_t il2cpp_domain_get;
@@ -113,6 +116,9 @@ namespace il2cpp_symbols
 
 	void init(HMODULE game_module)
 	{
+		RESOLVE_IMPORT(il2cpp_domain_get_assemblies);
+		RESOLVE_IMPORT(il2cpp_image_get_class_count);
+		RESOLVE_IMPORT(il2cpp_image_get_class);
 		RESOLVE_IMPORT(il2cpp_string_new_utf16);
 		RESOLVE_IMPORT(il2cpp_string_new);
 		RESOLVE_IMPORT(il2cpp_domain_get);

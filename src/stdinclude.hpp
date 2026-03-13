@@ -85,7 +85,7 @@ LONG WINAPI seh_filter(EXCEPTION_POINTERS* ep);
 namespace debug {
 	void DumpRelationMemoryHex(const void* target, const size_t length = 0x40);
 	void DumpRegisters();
-	void PrintNativeStackTrace(ULONG framesToSkip, ULONG framesToCapture);
+	void PrintManagedStackTrace(ULONG framesToSkip = 0, ULONG framesToCapture = 64);
 }
 
 // @return remove the callback after call or not; true to remove, false to keep.

@@ -429,6 +429,9 @@ typedef uint16_t Il2CppChar;
 #endif
 
 // function types
+typedef const void** (*il2cpp_domain_get_assemblies_t)(const void* domain, size_t* size);
+typedef size_t(*il2cpp_image_get_class_count_t)(const void* image);
+typedef const Il2CppClass* (*il2cpp_image_get_class_t)(const void* image, size_t index);
 typedef Il2CppString* (*il2cpp_string_new_utf16_t)(const wchar_t* str, unsigned int len);
 typedef Il2CppString* (*il2cpp_string_new_t)(const char* str);
 typedef void* (*il2cpp_domain_get_t)();
@@ -485,6 +488,9 @@ typedef Il2CppClass* (*il2cpp_type_get_class_or_element_class_t)(const Il2CppTyp
 typedef char* (*il2cpp_type_get_name_t)(const Il2CppType* type);
 
 // function defines
+extern il2cpp_domain_get_assemblies_t il2cpp_domain_get_assemblies;
+extern il2cpp_image_get_class_count_t il2cpp_image_get_class_count;
+extern il2cpp_image_get_class_t il2cpp_image_get_class;
 extern il2cpp_string_new_utf16_t il2cpp_string_new_utf16;
 extern il2cpp_string_new_t il2cpp_string_new;
 extern il2cpp_domain_get_t il2cpp_domain_get;

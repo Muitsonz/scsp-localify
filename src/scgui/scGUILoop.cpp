@@ -998,6 +998,8 @@ namespace SCGUILoop {
 #ifdef __TOOL_HOOK_NETWORKING__
 		ImGui::Checkbox("Output networking calls", &tools::output_networking_calls);
 #endif
-
+#ifdef __TOOL_BUILD_CALLING_RELATIONS__
+		ImGui::Button("BuildCallingRelations");
+#endif
 	}
 }

@@ -142,11 +142,11 @@ namespace debug {
 
 	void PrintManagedStackTrace(ULONG framesToSkip, ULONG framesToCapture) {
 		EnsureManagedMethodTable();
-		
+
 		std::vector<PVOID> backTrace(framesToCapture);
 		ULONG captured = RtlCaptureStackBackTrace(framesToSkip, framesToCapture, backTrace.data(), NULL);
 
-		printf("====== PrintManagedStackTrace ======\n");
+		printf("====== ManagedStackTrace ======\n");
 		for (ULONG i = 0; i < captured; i++) {
 			uintptr_t pc = reinterpret_cast<uintptr_t>(backTrace[i]);
 			const MethodInfo* method = ResolveAddress(pc);
@@ -185,6 +185,7 @@ LONG WINAPI seh_filter(EXCEPTION_POINTERS* ep) {
 
 	debug::DumpRelationMemoryHex((const void*)((uintptr_t)addr - 0x20));
 	debug::DumpRegisters();
+	debug::PrintManagedStackTrace();
 
 	return EXCEPTION_EXECUTE_HANDLER;
 }

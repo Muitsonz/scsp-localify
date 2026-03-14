@@ -79,6 +79,7 @@
 #define PRINT(var) std::cout << #var << " = " << var << std::endl;
 #define PRINT_ONCE(_txt_var_) static bool __print_once_##_txt_var_ = [] { PRINT(_txt_var_); return true; }();
 LONG WINAPI seh_filter(EXCEPTION_POINTERS* ep);
+#define __EXCEPT() __except (seh_filter(GetExceptionInformation())) { }
 #define __EXCEPT(strContext) __except (seh_filter(GetExceptionInformation())) { std::cout << "SEH exception detected in '" << strContext << "'.\n"; }
 
 
@@ -411,4 +412,5 @@ extern float g_magicacloth_springNoise;
 namespace tools {
 	extern bool output_networking_calls;
 	extern void AddNetworkingHooks();
+	extern void BuildCallingRelations();
 }

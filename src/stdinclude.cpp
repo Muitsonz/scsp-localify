@@ -106,7 +106,16 @@ namespace debug {
 				return a->methodPointer < b->methodPointer;
 			});
 	}
-	static const MethodInfo* ResolveAddress(uintptr_t pc) {
+	static void EnsureManagedMethodTable() {
+		if (!managedMethodTable.empty()) return;
+		PrepareManagedMethodAddressTable();
+	}
+	const std::vector<const MethodInfo*>& GetManagedMethodTable() {
+		EnsureManagedMethodTable();
+		return managedMethodTable;
+	}
+
+	const MethodInfo* ResolveAddress(uintptr_t pc) {
 		auto it = std::upper_bound(managedMethodTable.begin(), managedMethodTable.end(), pc,
 			[](uintptr_t val, const MethodInfo* m) {
 				return val < m->methodPointer;
@@ -115,12 +124,13 @@ namespace debug {
 		if (it == managedMethodTable.begin()) return nullptr;
 		return *--it;
 	}
-	static std::string FormatMethodInfo(const MethodInfo* method) {
+
+	std::string FormatMethodInfo(const MethodInfo* method, bool includeNamespace) {
 		const char* ns = il2cpp_class_get_namespace((void*)method->klass);
 		const char* className = il2cpp_class_get_name((void*)method->klass);
 
 		std::string result;
-		if (ns && *ns)
+		if (includeNamespace && ns && *ns)
 			result = std::string(ns) + "." + className + "::" + method->name;
 		else
 			result = std::string(className) + "::" + method->name;
@@ -134,10 +144,6 @@ namespace debug {
 		result += ")";
 
 		return result;
-	}
-	static void EnsureManagedMethodTable() {
-		if (!managedMethodTable.empty()) return;
-		PrepareManagedMethodAddressTable();
 	}
 
 	void PrintManagedStackTrace(ULONG framesToSkip, ULONG framesToCapture) {

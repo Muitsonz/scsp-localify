@@ -771,7 +771,6 @@ namespace SCGUILoop {
 			if (ImGui::CollapsingHeader("Devs", ImGuiTreeNodeFlags_None)) {
 				devTabLoop();
 			}
-
 		}
 
 		if (___showMessageBox) {
@@ -999,7 +998,9 @@ namespace SCGUILoop {
 		ImGui::Checkbox("Output networking calls", &tools::output_networking_calls);
 #endif
 #ifdef __TOOL_BUILD_CALLING_RELATIONS__
-		ImGui::Button("BuildCallingRelations");
+		if (ImGui::Button("BuildCallingRelations")) {
+			tools::BuildCallingRelations();
+		}
 #endif
 	}
 }

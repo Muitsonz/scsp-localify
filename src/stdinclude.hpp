@@ -86,6 +86,11 @@ LONG WINAPI seh_filter(EXCEPTION_POINTERS* ep);
 namespace debug {
 	void DumpRelationMemoryHex(const void* target, const size_t length = 0x40);
 	void DumpRegisters();
+
+	const std::vector<const MethodInfo*>& GetManagedMethodTable();
+	const MethodInfo* ResolveAddress(uintptr_t pc);
+	std::string FormatMethodInfo(const MethodInfo* method, bool includeNamespace = true);
+
 	void PrintManagedStackTrace(ULONG framesToSkip = 0, ULONG framesToCapture = 64);
 }
 
@@ -412,5 +417,8 @@ extern float g_magicacloth_springNoise;
 namespace tools {
 	extern bool output_networking_calls;
 	extern void AddNetworkingHooks();
+	// Build static calling relations for all managed methods.
+	// The implementation currently builds a JSON string describing the call graph
+	// and keeps it in a local variable for later use.
 	extern void BuildCallingRelations();
 }

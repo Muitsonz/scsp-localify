@@ -1,5 +1,7 @@
 #ifndef __TOOL_BUILD_CALLING_RELATIONS__
-void tools::BuildCallingRelations() {}
+namespace tools {
+	void BuildCallingRelations() {}
+}
 #else
 
 #define ZYDIS_STATIC_BUILD

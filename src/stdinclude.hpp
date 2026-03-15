@@ -417,8 +417,5 @@ extern float g_magicacloth_springNoise;
 namespace tools {
 	extern bool output_networking_calls;
 	extern void AddNetworkingHooks();
-	// Build static calling relations for all managed methods.
-	// The implementation currently builds a JSON string describing the call graph
-	// and keeps it in a local variable for later use.
 	extern void BuildCallingRelations();
 }

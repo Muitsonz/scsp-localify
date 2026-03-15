@@ -89,7 +89,7 @@ namespace debug {
 
 	const std::vector<const MethodInfo*>& GetManagedMethodTable();
 	const MethodInfo* ResolveAddress(uintptr_t pc);
-	std::string FormatMethodInfo(const MethodInfo* method, bool includeNamespace = true);
+	std::string FormatMethodInfo(const MethodInfo* method);
 
 	void PrintManagedStackTrace(ULONG framesToSkip = 0, ULONG framesToCapture = 64);
 }

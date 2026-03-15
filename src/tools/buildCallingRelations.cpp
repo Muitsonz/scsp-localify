@@ -61,6 +61,15 @@ static uintptr_t GetCallTarget(
 
 // the last entry in the table has no known end address and is skipped
 void tools::BuildCallingRelations() {
+	// output to files
+	const char* outputFilePath = "calling-relations.txt";
+	const auto outPath = g_localify_base / outputFilePath;
+	std::ofstream ofs(outPath, std::ios::binary | std::ios::trunc);
+	if (!ofs.is_open()) {
+		std::cout << "Failed to open file '" << outputFilePath << "' to write." << std::endl;
+		return;
+	}
+
 	const std::vector<const MethodInfo*>& table = debug::GetManagedMethodTable();
 	const ZydisDecoder* decoder = GetDecoder();
 	if (!decoder)
@@ -77,7 +86,7 @@ void tools::BuildCallingRelations() {
 		if (start >= end)
 			continue;
 
-		MethodCallSummary summary{ caller, debug::FormatMethodInfo(caller, true), {} };
+		MethodCallSummary summary{ caller, debug::FormatMethodInfo(caller), {} };
 
 		const auto* ip = reinterpret_cast<const uint8_t*>(start);
 		const auto* limit = reinterpret_cast<const uint8_t*>(end);
@@ -134,14 +143,6 @@ void tools::BuildCallingRelations() {
 			return a.entryName < b.entryName;
 		});
 
-	// output to files
-	const char* outputFilePath = "calling-relations.txt";
-	const auto outPath = g_localify_base / outputFilePath;
-	std::ofstream ofs(outPath, std::ios::binary | std::ios::trunc);
-	if (!ofs.is_open()) {
-		std::cout << "Failed to open file '" << outputFilePath << "' to write." << std::endl;
-	}
-
 	for (const auto& summary : summaries) {
 		const MethodInfo* entry = summary.entryPoint;
 		const uintptr_t entryPtr = entry->methodPointer;
@@ -152,13 +153,24 @@ void tools::BuildCallingRelations() {
 
 		const int64_t rrva = static_cast<int64_t>(entryRva) - static_cast<int64_t>(typeBase);
 
-		ofs << "=== " << summary.entryName << " ===\n";
+		// add assembly name
+		const auto* entryKlass = reinterpret_cast<const Il2CppClass*>(entry->klass);
+		const void* image = entryKlass ? entryKlass->image : nullptr;
+		const char* assemblyName = (image && il2cpp_image_get_name)
+			? il2cpp_image_get_name(image)
+			: nullptr;
+
+		ofs << "=== " << summary.entryName << " ===";
+		if (assemblyName && *assemblyName) {
+			ofs << " (" << assemblyName << ")";
+		}
+		ofs << "\n";
 		ofs << "# RRVA = " << rrva << "\n";
 
 		std::vector<std::string> calleeLines;
 		calleeLines.reserve(summary.callees.size());
 		for (const MethodInfo* callee : summary.callees) {
-			calleeLines.emplace_back(debug::FormatMethodInfo(callee, true));
+			calleeLines.emplace_back(debug::FormatMethodInfo(callee));
 		}
 		std::sort(calleeLines.begin(), calleeLines.end());
 

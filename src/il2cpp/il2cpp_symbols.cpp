@@ -3,6 +3,7 @@
 il2cpp_domain_get_assemblies_t il2cpp_domain_get_assemblies;
 il2cpp_image_get_class_count_t il2cpp_image_get_class_count;
 il2cpp_image_get_class_t il2cpp_image_get_class;
+il2cpp_image_get_name_t il2cpp_image_get_name;
 il2cpp_string_new_utf16_t il2cpp_string_new_utf16;
 il2cpp_string_new_t il2cpp_string_new;
 il2cpp_domain_get_t il2cpp_domain_get;
@@ -52,6 +53,7 @@ il2cpp_array_length_t il2cpp_array_length;
 il2cpp_class_get_parent_t il2cpp_class_get_parent;
 il2cpp_method_get_name_t il2cpp_method_get_name;
 il2cpp_method_get_class_t il2cpp_method_get_class;
+il2cpp_method_is_instance_t il2cpp_method_is_instance;
 il2cpp_object_get_class_t il2cpp_object_get_class;
 il2cpp_string_chars_t il2cpp_string_chars;
 il2cpp_string_length_t il2cpp_string_length;
@@ -119,6 +121,7 @@ namespace il2cpp_symbols
 		RESOLVE_IMPORT(il2cpp_domain_get_assemblies);
 		RESOLVE_IMPORT(il2cpp_image_get_class_count);
 		RESOLVE_IMPORT(il2cpp_image_get_class);
+		RESOLVE_IMPORT(il2cpp_image_get_name);
 		RESOLVE_IMPORT(il2cpp_string_new_utf16);
 		RESOLVE_IMPORT(il2cpp_string_new);
 		RESOLVE_IMPORT(il2cpp_domain_get);
@@ -167,6 +170,7 @@ namespace il2cpp_symbols
 		RESOLVE_IMPORT(il2cpp_class_get_parent);
 		RESOLVE_IMPORT(il2cpp_method_get_name);
 		RESOLVE_IMPORT(il2cpp_method_get_class);
+		RESOLVE_IMPORT(il2cpp_method_is_instance);
 		RESOLVE_IMPORT(il2cpp_object_get_class);
 		RESOLVE_IMPORT(il2cpp_string_chars);
 		RESOLVE_IMPORT(il2cpp_string_length);

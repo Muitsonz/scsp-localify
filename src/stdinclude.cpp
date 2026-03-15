@@ -125,21 +125,85 @@ namespace debug {
 		return *--it;
 	}
 
-	std::string FormatMethodInfo(const MethodInfo* method, bool includeNamespace) {
+	static const char* TryGetKeywordName(const std::string& token, const std::string& currentNamespace) {
+		if (currentNamespace != "System") return nullptr;
+		if (token == "Void")    return "void";
+		if (token == "Boolean") return "bool";
+		if (token == "Byte")    return "byte";
+		if (token == "SByte")   return "sbyte";
+		if (token == "Int16")   return "short";
+		if (token == "UInt16")  return "ushort";
+		if (token == "Int32")   return "int";
+		if (token == "UInt32")  return "uint";
+		if (token == "Int64")   return "long";
+		if (token == "UInt64")  return "ulong";
+		if (token == "Single")  return "float";
+		if (token == "Double")  return "double";
+		if (token == "Decimal") return "decimal";
+		if (token == "Char")    return "char";
+		if (token == "String")  return "string";
+		if (token == "Object")  return "object";
+		return nullptr;
+	}
+	static std::string GetTypeName(const Il2CppType* type, bool includeNamespace) {
+		if (!type) return "?";
+		const char* fullName = il2cpp_type_get_name(type);
+		if (!fullName) return "?";
+		std::string result;
+		std::string token;
+		std::string currentNamespace; // tracks the namespace accumulated before the final class name
+		for (char c : std::string_view(fullName)) {
+			if (c == '.') {
+				if (includeNamespace) {
+					currentNamespace += token + "."; // accumulate namespace for keyword check
+					token += "::";
+				}
+				else {
+					currentNamespace += token + "."; // accumulate even when stripping, for keyword check
+					token.clear();
+				}
+			}
+			else if (c == '<' || c == '>' || c == ',') {
+				// flush token ¡ª check for keyword substitution first
+				const char* keyword = TryGetKeywordName(token, currentNamespace);
+				// strip trailing '.' from accumulated namespace before comparing
+				std::string ns = currentNamespace.empty() ? "" : currentNamespace.substr(0, currentNamespace.size() - 1);
+				keyword = TryGetKeywordName(token, ns);
+				result += keyword ? keyword : token;
+				token.clear();
+				currentNamespace.clear(); // reset namespace for next type argument
+				result += c;
+				if (c == ',') result += ' ';
+			}
+			else {
+				token += c;
+			}
+		}
+		// flush remainder
+		std::string ns = currentNamespace.empty() ? "" : currentNamespace.substr(0, currentNamespace.size() - 1);
+		const char* keyword = TryGetKeywordName(token, ns);
+		result += keyword ? keyword : token;
+		return result;
+	}
+	std::string FormatMethodInfo(const MethodInfo* method) {
 		const char* ns = il2cpp_class_get_namespace((void*)method->klass);
 		const char* className = il2cpp_class_get_name((void*)method->klass);
-
 		std::string result;
-		if (includeNamespace && ns && *ns)
-			result = std::string(ns) + "." + className + "::" + method->name;
-		else
-			result = std::string(className) + "::" + method->name;
+
+		if (!il2cpp_method_is_instance(method))
+			result += "static ";
+
+		auto returnTypeName = GetTypeName(il2cpp_method_get_return_type(method), false);
+		result = result + returnTypeName + " ";
+
+		auto declTypeName = GetTypeName((Il2CppType*)il2cpp_class_get_type(il2cpp_method_get_class(method)), true);
+		result = result + declTypeName + "." + il2cpp_method_get_name(method);
 
 		result += "(";
 		for (uint8_t i = 0; i < method->parameters_count; i++) {
 			if (i > 0) result += ", ";
-			const char* paramTypeName = il2cpp_symbols::il2cpp_method_get_param_type_name(method, i);
-			result += paramTypeName ? paramTypeName : "?";
+			auto paramTypeName = GetTypeName(il2cpp_method_get_param(method, i), false);
+			result += paramTypeName;
 		}
 		result += ")";
 

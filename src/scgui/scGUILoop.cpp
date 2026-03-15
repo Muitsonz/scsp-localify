@@ -1000,6 +1000,7 @@ namespace SCGUILoop {
 #ifdef __TOOL_BUILD_CALLING_RELATIONS__
 		if (ImGui::Button("BuildCallingRelations")) {
 			tools::BuildCallingRelations();
+			ShowMessageBox("ok");
 		}
 #endif
 	}

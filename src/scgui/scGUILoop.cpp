@@ -1,6 +1,7 @@
 #include "imgui/imgui.h"
 #include "stdinclude.hpp"
 #include "scgui/scGUIData.hpp"
+#include "scgui/scGUIAction.hpp"
 #include <rapidjson/document.h>
 #include <rapidjson/writer.h>
 #include <rapidjson/stringbuffer.h>
@@ -758,7 +759,9 @@ namespace SCGUILoop {
 				}
 			}
 
-			PosesLoop();
+			if (ImGui::CollapsingHeader("Poses", ImGuiTreeNodeFlags_DefaultOpen)) {
+				PosesLoop();
+			}
 
 			if (ImGui::CollapsingHeader("Legacy", ImGuiTreeNodeFlags_None)) {
 				ImGui::Checkbox("Live Allow Same Idol (Dangerous)", &g_allow_same_idol);
@@ -814,181 +817,174 @@ namespace SCGUILoop {
 
 	void PosesLoop() {
 		ImGui::PushID("PosesLoop");
-		if (ImGui::CollapsingHeader("Poses", ImGuiTreeNodeFlags_DefaultOpen)) {
 
-			// btn Scan idol poses
-			ImGui::Dummy(ImVec2(40, 0));
+		// btn Scan idol poses
+		ImGui::Dummy(ImVec2(40, 0));
+		ImGui::SameLine();
+		if (ImGui::Button("Scan idol objects")) {
+			mainThreadTasks.push_back([]() {
+				scannedGameObjects.clear();
+				auto idols = GetActiveIdolObjects();
+				if (idols.size() == 0) {
+					std::cerr << "[ScanIdolObjects] No idol object found." << std::endl;
+				}
+				for (auto& pair : idols) {
+					auto name = reflection::UnityObject_get_name(pair.first)->ToUtf8String();
+					scannedGameObjects.emplace_back((Il2CppObject*)pair.first, name, name.substr(6, 2));
+				}
+				return true;
+				});
+		}
+
+		ImGui::Separator();
+
+		ImGui::Text("Known GameObjects");
+
+		// list of scannedGameObjects: [txtDisplayName - btnSerialize - btnApply - btnEdit]
+		ImGui::Indent();
+		for (int i = 0; i < scannedGameObjects.size(); ++i) {
+			ImGui::PushID(i);
+			auto& data = scannedGameObjects[i];
+
+			// txtDisplayName
+			ImGui::Text(data.displayName.c_str());
 			ImGui::SameLine();
-			if (ImGui::Button("Scan idol objects")) {
-				mainThreadTasks.push_back([]() {
-					for (int i = 0; i < scannedGameObjects.size(); ++i) {
-						if (!scannedGameObjects[i]) {
-							scannedGameObjects.erase(scannedGameObjects.begin() + i);
-							--i;
-						}
-					}
-					auto idols = GetActiveIdolObjects();
-					if (idols.size() == 0) {
-						std::cerr << "[ScanIdolObjects] No idol object found." << std::endl;
-					}
-					for (auto& pair : idols) {
-						auto name = reflection::UnityObject_get_name(pair.first)->ToUtf8String();
-						auto found = std::find_if(
-							scannedGameObjects.begin(), scannedGameObjects.end(),
-							[&](const auto& data) { return data.objName == name; }
-						);
-						if (found == scannedGameObjects.end()) {
-							scannedGameObjects.emplace_back((Il2CppObject*)pair.first, name, name.substr(6, 2));
-						}
-					}
-					return true;
-					});
-			}
-
-			ImGui::Separator();
-
-			ImGui::Text("Known GameObjects");
-
-			// list of scannedGameObjects: [txtDisplayName - btnSerialize - btnApply]
-			ImGui::Indent();
-			for (int i = 0; i < scannedGameObjects.size(); ++i) {
-				ImGui::PushID(i);
-				auto& data = scannedGameObjects[i];
-				// txtDisplayName
-				ImGui::Text(data.displayName.c_str());
-				ImGui::SameLine();
-				// // btnRename
-				// if (ImGui::Button("Rename")) {
-				// 	int copiedIndex = i;
-				// 	ShowInputPopup("Enter a new name:", data.displayName, [copiedIndex](bool isOk, std::string input) {
-				// 		if (isOk) {
-				// 			scannedGameObjects[copiedIndex].displayName = input;
-				// 		}
-				// 		});
-				// }
-				ImGui::SameLine();
-				// btnSerialize
-				if (ImGui::Button("Serialize")) {
-					if (!data) {
-						ShowMessageBox("This GameObject isn't alive now.");
-						std::cerr << "[ScanIdolObjects] Target object to serialize isn't alive now." << std::endl;
-						scannedGameObjects.erase(scannedGameObjects.begin() + i);
-						--i;
-						selectedPoseIndex = -1;
-					}
-					else {
-						auto json = SerializeIdolPose(data.gameObject);
-						if (WriteClipboard(json)) {
-							ShowMessageBox("Copied!");
-							std::cout << "Idol pose json copied. (length = " << json.length() << ")" << std::endl;
-						}
-						else {
-							ShowMessageBox("Failed to write clipboard. Check console for the serialized json.");
-							std::cout << "====== Idol Pose Json ======" << std::endl
-								<< json << std::endl
-								<< "====== end of idol pose json ======" << std::endl;
-						}
-						savedTransformOverridingJson.emplace_back(data.displayName, json);
-					}
-				}
-				ImGui::SameLine();
-				// btnApply
-				if (ImGui::Button("ApplyTo")) {
-					if (!data) {
-						ShowMessageBox("This GameObject isn't alive now.");
-						std::cerr << "[ScanIdolObjects] Target object to serialize isn't alive now." << std::endl;
-						scannedGameObjects.erase(scannedGameObjects.begin() + i);
-						--i;
-						selectedPoseIndex = -1;
-					}
-					else if (selectedPoseIndex < 0 || selectedPoseIndex >= savedTransformOverridingJson.size()) {
-						ShowMessageBox("Invalid selection state. Select a valid pose data before applying.");
-					}
-					else {
-						auto& json = savedTransformOverridingJson[selectedPoseIndex].second;
-						DeserializeIdolPose(json, data.gameObject, true);
-					}
-				}
-				ImGui::PopID();
-			}
-			ImGui::Unindent();
-
-			ImGui::Separator();
-
-			// indented header "Cached poses"
-			ImGui::Text("Cached poses");
-
-			// list of savedTransformOverridingJson: [btnName(select) - btnRename - btnCopy - btnRemove]
-			ImGui::Indent();
-			for (int i = 0; i < savedTransformOverridingJson.size(); ++i) {
-				ImGui::PushID(i);
-				// btnName(select), with a different color when selected
-				ImGui::PushStyleColor(
-					ImGuiCol_Button, selectedPoseIndex == i
-					? ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive)
-					: ImGui::GetStyleColorVec4(ImGuiCol_Button)
-				);
-				if (ImGui::Button(savedTransformOverridingJson[i].first.c_str())) {
-					if (selectedPoseIndex == i) {
-						selectedPoseIndex = -1;
-					}
-					else {
-						selectedPoseIndex = i;
-					}
-				}
-				ImGui::PopStyleColor();
-				ImGui::SameLine();
-				if (ImGui::Button("Rename")) {
-					int copiedIndex = i;
-					ShowInputPopup("Enter a new name:", savedTransformOverridingJson[copiedIndex].first, [copiedIndex](bool isOk, std::string input) {
-						if (isOk) {
-							savedTransformOverridingJson[copiedIndex].first = input;
-						}
-						});
-				}
-				ImGui::SameLine();
-				// btnCopy
-				if (ImGui::Button("Copy")) {
-					auto r = WriteClipboard(savedTransformOverridingJson[i].second);
-					ShowMessageBox(r ? "Success" : "Failed");
-				}
-				ImGui::SameLine();
-				// btnRemove
-				if (ImGui::Button("Remove")) {
-					savedTransformOverridingJson.erase(savedTransformOverridingJson.begin() + i);
+			// btnSerialize
+			if (ImGui::Button("Serialize")) {
+				if (!data) {
+					ShowMessageBox("This GameObject isn't alive now.");
+					std::cerr << "[ScanIdolObjects] Target object to serialize isn't alive now." << std::endl;
+					scannedGameObjects.erase(scannedGameObjects.begin() + i);
 					--i;
 					selectedPoseIndex = -1;
 				}
-				ImGui::PopID();
+				else {
+					auto json = SerializeIdolPose(data.gameObject);
+					if (WriteClipboard(json)) {
+						ShowMessageBox("Copied!");
+						std::cout << "Idol pose json copied. (length = " << json.length() << ")" << std::endl;
+					}
+					else {
+						ShowMessageBox("Failed to write clipboard. Check console for the serialized json.");
+						std::cout << "====== Idol Pose Json ======" << std::endl
+							<< json << std::endl
+							<< "====== end of idol pose json ======" << std::endl;
+					}
+					savedTransformOverridingJson.emplace_back(data.displayName, json);
+				}
 			}
-			ImGui::Unindent();
-
-			// btn Clear cached poses
-			if (ImGui::Button("Clear cached poses")) {
-				savedTransformOverridingJson.clear();
-			}
-
-			// btn import from clipboard
 			ImGui::SameLine();
-			if (ImGui::Button("Import from clipboard")) {
-				std::string json;
-				if (ReadClipboard(&json)) {
-					savedTransformOverridingJson.emplace_back("paste", json);
+			// btnApply
+			if (ImGui::Button("ApplyTo")) {
+				if (!data) {
+					ShowMessageBox("This GameObject isn't alive now.");
+					std::cerr << "[ScanIdolObjects] Target object to apply isn't alive now." << std::endl;
+					scannedGameObjects.erase(scannedGameObjects.begin() + i);
+					--i;
+					selectedPoseIndex = -1;
+				}
+				else if (selectedPoseIndex < 0 || selectedPoseIndex >= savedTransformOverridingJson.size()) {
+					ShowMessageBox("Invalid selection state. Select a valid pose data before applying.");
 				}
 				else {
-					ShowMessageBox("Failed to read clipboard.");
+					auto& json = savedTransformOverridingJson[selectedPoseIndex].second;
+					DeserializeIdolPose(json, data.gameObject, true);
+				}
+			}
+			ImGui::SameLine();
+			// btnClear
+			if (ImGui::Button("Clear")) {
+				if (!data) {
+					ShowMessageBox("This GameObject isn't alive now.");
+					std::cerr << "[ScanIdolObjects] Target object to clear isn't alive now." << std::endl;
+					scannedGameObjects.erase(scannedGameObjects.begin() + i);
+					--i;
+					selectedPoseIndex = -1;
+				}
+				else {
+					ClearIdolPose(data.gameObject);
 				}
 			}
 
-			ImGui::Separator();
-
-			ImGui::Dummy(ImVec2(40, 0));
-			ImGui::SameLine();
-			if (ImGui::Button("Clear all overridings")) {
-				transformOverriding.clear();
-			}
-
+			ImGui::PopID();
 		}
+		ImGui::Unindent();
+
+		ImGui::Separator();
+
+		// indented header "Cached poses"
+		ImGui::Text("Cached poses");
+
+		// list of savedTransformOverridingJson: [btnName(select) - btnRename - btnCopy - btnRemove]
+		ImGui::Indent();
+		for (int i = 0; i < savedTransformOverridingJson.size(); ++i) {
+			ImGui::PushID(i);
+			// btnName(select), with a different color when selected
+			ImGui::PushStyleColor(
+				ImGuiCol_Button, selectedPoseIndex == i
+				? ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive)
+				: ImGui::GetStyleColorVec4(ImGuiCol_Button)
+			);
+			if (ImGui::Button(savedTransformOverridingJson[i].first.c_str())) {
+				if (selectedPoseIndex == i) {
+					selectedPoseIndex = -1;
+				}
+				else {
+					selectedPoseIndex = i;
+				}
+			}
+			ImGui::PopStyleColor();
+			ImGui::SameLine();
+			if (ImGui::Button("Rename")) {
+				int copiedIndex = i;
+				ShowInputPopup("Enter a new name:", savedTransformOverridingJson[copiedIndex].first, [copiedIndex](bool isOk, std::string input) {
+					if (isOk) {
+						savedTransformOverridingJson[copiedIndex].first = input;
+					}
+					});
+			}
+			ImGui::SameLine();
+			// btnCopy
+			if (ImGui::Button("Copy")) {
+				auto r = WriteClipboard(savedTransformOverridingJson[i].second);
+				ShowMessageBox(r ? "Success" : "Failed");
+			}
+			ImGui::SameLine();
+			// btnRemove
+			if (ImGui::Button("Remove")) {
+				savedTransformOverridingJson.erase(savedTransformOverridingJson.begin() + i);
+				--i;
+				selectedPoseIndex = -1;
+			}
+			ImGui::PopID();
+		}
+		ImGui::Unindent();
+
+		// btn Clear cached poses
+		if (ImGui::Button("Clear cached poses")) {
+			savedTransformOverridingJson.clear();
+		}
+
+		// btn import from clipboard
+		ImGui::SameLine();
+		if (ImGui::Button("Import from clipboard")) {
+			std::string json;
+			if (ReadClipboard(&json)) {
+				savedTransformOverridingJson.emplace_back("paste", json);
+			}
+			else {
+				ShowMessageBox("Failed to read clipboard.");
+			}
+		}
+
+		ImGui::Separator();
+
+		ImGui::Dummy(ImVec2(40, 0));
+		ImGui::SameLine();
+		if (ImGui::Button("Clear all overridings")) {
+			transformOverriding.clear();
+		}
+
 		ImGui::PopID();
 	}
 

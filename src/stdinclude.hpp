@@ -344,9 +344,6 @@ enum class ClothForceMode {
 
 // @return (const Il2CppObject* gameObject, const Il2CppObject* transform)[]
 std::vector<std::pair<const Il2CppObject*, const Il2CppObject*>> GetActiveIdolObjects();
-std::string SerializeIdolPose(const Il2CppObject* gameObject);
-void DeserializeIdolPose(const std::string& json, Il2CppObject* gameObject, bool registerToTransformOverriding);
-
 
 extern std::map<int, std::string> swayTypes;
 extern std::map<int, CharaSwayStringParam_t> charaSwayStringOffset;

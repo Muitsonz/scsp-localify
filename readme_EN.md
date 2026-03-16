@@ -32,6 +32,7 @@ iM@S SCSP localify plugin.
   - Edit on-stage idols manually, allowing to select unlocked idols
 - Real-time Modification of Character Body Parameters, Adjust Height, Head, Chest, Arm, and Palm Size **(Modify in GUI)**
 - Runtime texture extracting and replacing
+- Copying body pose data
 
 
 
@@ -206,6 +207,10 @@ Set `dumpUntransLyrics` and `dumpUntransLocal2` in `scsp-config.json` to `true`,
 # Runtime texture extracting and replacing
 - Extracting: After checking option `Extract assets of：` and filters in GUI, textures will be extracted to `TextureDump` in the same directory to the program.
 - Replacing: Textures put inside directory `scsp_localify\textures` with exactly same names of extracted will be loaded and replaced automatically.
+
+
+# Copying body pose data
+a breif instruction: https://github.com/chinosk6/scsp-localify/discussions/101
 
 
 # How to build

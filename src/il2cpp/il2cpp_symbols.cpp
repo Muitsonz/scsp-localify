@@ -1,5 +1,9 @@
 #include <stdinclude.hpp>
 
+il2cpp_domain_get_assemblies_t il2cpp_domain_get_assemblies;
+il2cpp_image_get_class_count_t il2cpp_image_get_class_count;
+il2cpp_image_get_class_t il2cpp_image_get_class;
+il2cpp_image_get_name_t il2cpp_image_get_name;
 il2cpp_string_new_utf16_t il2cpp_string_new_utf16;
 il2cpp_string_new_t il2cpp_string_new;
 il2cpp_domain_get_t il2cpp_domain_get;
@@ -11,6 +15,7 @@ il2cpp_class_get_methods_t il2cpp_class_get_methods;
 il2cpp_class_get_method_from_name_t il2cpp_class_get_method_from_name;
 il2cpp_method_get_param_count_t il2cpp_method_get_param_count;
 il2cpp_method_get_param_t il2cpp_method_get_param;
+il2cpp_method_get_from_reflection_t il2cpp_method_get_from_reflection;
 il2cpp_method_get_object_t il2cpp_method_get_object;
 il2cpp_method_get_return_type_t il2cpp_method_get_return_type;
 il2cpp_method_get_declaring_type_t il2cpp_method_get_declaring_type;
@@ -48,6 +53,7 @@ il2cpp_array_length_t il2cpp_array_length;
 il2cpp_class_get_parent_t il2cpp_class_get_parent;
 il2cpp_method_get_name_t il2cpp_method_get_name;
 il2cpp_method_get_class_t il2cpp_method_get_class;
+il2cpp_method_is_instance_t il2cpp_method_is_instance;
 il2cpp_object_get_class_t il2cpp_object_get_class;
 il2cpp_string_chars_t il2cpp_string_chars;
 il2cpp_string_length_t il2cpp_string_length;
@@ -74,7 +80,7 @@ Il2CppClass* Il2CppClass::GetNestedClass(const char* name) {
 }
 
 
-Il2CppObject* MethodInfo::ReflectionInvoke(const Il2CppObject* instance, std::initializer_list<Il2CppObject*> params) const {
+Il2CppObject* MethodInfo::ReflectionInvoke(Il2CppObject* instance, std::initializer_list<Il2CppObject*> params) const {
 	auto declaringKlass = il2cpp_method_get_declaring_type(this);
 	std::string fullname = std::format(
 		"{}::{}.{}",
@@ -83,10 +89,6 @@ Il2CppObject* MethodInfo::ReflectionInvoke(const Il2CppObject* instance, std::in
 		il2cpp_method_get_name(this)
 	);
 	return reflection::Invoke<Il2CppObject*>(this, instance, (Il2CppObject**)params.begin(), fullname.c_str());
-}
-
-void MethodInfo::InvokeVoid(const Il2CppObject* instance, std::initializer_list<Il2CppObject*> params) const {
-	this->ReflectionInvoke(instance, params);
 }
 
 std::string MethodInfo::GetFullName() const {
@@ -116,6 +118,10 @@ namespace il2cpp_symbols
 
 	void init(HMODULE game_module)
 	{
+		RESOLVE_IMPORT(il2cpp_domain_get_assemblies);
+		RESOLVE_IMPORT(il2cpp_image_get_class_count);
+		RESOLVE_IMPORT(il2cpp_image_get_class);
+		RESOLVE_IMPORT(il2cpp_image_get_name);
 		RESOLVE_IMPORT(il2cpp_string_new_utf16);
 		RESOLVE_IMPORT(il2cpp_string_new);
 		RESOLVE_IMPORT(il2cpp_domain_get);
@@ -164,6 +170,7 @@ namespace il2cpp_symbols
 		RESOLVE_IMPORT(il2cpp_class_get_parent);
 		RESOLVE_IMPORT(il2cpp_method_get_name);
 		RESOLVE_IMPORT(il2cpp_method_get_class);
+		RESOLVE_IMPORT(il2cpp_method_is_instance);
 		RESOLVE_IMPORT(il2cpp_object_get_class);
 		RESOLVE_IMPORT(il2cpp_string_chars);
 		RESOLVE_IMPORT(il2cpp_string_length);
@@ -313,11 +320,11 @@ namespace il2cpp_symbols
 		return nullptr;
 	}
 
-	std::string get_unity_gameobject_fullname(Il2CppObject* obj, bool excludeThisName, __inout_opt int* pIncludedParentCount) {
+	std::string get_unity_gameobject_fullname(const Il2CppObject* obj, bool excludeThisName, __inout_opt int* pIncludedParentCount) {
 		static auto klass_Component = il2cpp_symbols_logged::get_class("UnityEngine.CoreModule.dll", "UnityEngine", "Component");
 		static auto method_Component_get_gameObject = il2cpp_class_get_method_from_name(klass_Component, "get_gameObject", 0);
 
-		auto klass = il2cpp_object_get_class(obj);
+		auto klass = il2cpp_object_get_class((Il2CppObject*)obj);
 		if (il2cpp_class_is_assignable_from(klass_Component, klass)) {
 			std::vector<std::string> parts{};
 			if (!excludeThisName) {
@@ -327,7 +334,7 @@ namespace il2cpp_symbols
 			}
 			int count = 0;
 			int maxCount = (pIncludedParentCount == nullptr) ? std::numeric_limits<int>::max() : *pIncludedParentCount;
-			auto go = method_Component_get_gameObject->Invoke<Il2CppObject*>(obj, {});
+			auto go = method_Component_get_gameObject->Invoke<Il2CppObject*>((Il2CppObject*)obj, {});
 			while (go != nullptr && count < maxCount) {
 				auto managedName = reflection::UnityObject_get_name(go);
 				auto name = reflection::helper::ToUtf8(managedName);
@@ -353,6 +360,57 @@ namespace il2cpp_symbols
 				*pIncludedParentCount = 0;
 			return "";
 		}
+	}
+
+	int EnumerateAllChildrenGameObjects(Il2CppObject* gameObject, const std::function<int(Il2CppObject* gameObject, Il2CppObject* transform)>& callback) {
+		static auto method_Transform_get_childCount = il2cpp_symbols_logged::get_method(
+			"UnityEngine.CoreModule.dll", "UnityEngine",
+			"Transform", "get_childCount", 0
+		);
+		static auto method_Transform_GetChild = il2cpp_symbols_logged::get_method(
+			"UnityEngine.CoreModule.dll", "UnityEngine",
+			"Transform", "GetChild", 1
+		);
+
+		auto transform = reflection::GameObject_get_transform(gameObject);
+		switch (callback(gameObject, transform))
+		{
+		case 0: return 0;
+		case -1: return 1; // skip enumerating children, and return continue
+		}
+
+		int childCount = method_Transform_get_childCount->Invoke(transform, {})->unbox_value<int>();
+		for (int i = 0; i < childCount; ++i) {
+			auto childTransform = method_Transform_GetChild->Invoke(transform, { (Il2CppObject*)&i });
+			auto childGameObject = reflection::Component_get_gameObject(childTransform);
+			if (0 == EnumerateAllChildrenGameObjects(childGameObject, callback)) {
+				return 0;
+			}
+		}
+
+		return 1;
+	}
+
+	std::vector<std::pair<Il2CppObject*, Il2CppObject*>> GetChildrenGameObjects(const Il2CppObject* gameObject) {
+		static auto method_Transform_get_childCount = il2cpp_symbols_logged::get_method(
+			"UnityEngine.CoreModule.dll", "UnityEngine",
+			"Transform", "get_childCount", 0
+		);
+		static auto method_Transform_GetChild = il2cpp_symbols_logged::get_method(
+			"UnityEngine.CoreModule.dll", "UnityEngine",
+			"Transform", "GetChild", 1
+		);
+
+		auto transform = reflection::GameObject_get_transform(gameObject);
+
+		int childCount = method_Transform_get_childCount->Invoke(transform, {})->unbox_value<int>();
+		std::vector<std::pair<Il2CppObject*, Il2CppObject*>> vec{};
+		for (int i = 0; i < childCount; ++i) {
+			auto childTransform = method_Transform_GetChild->Invoke(transform, { (Il2CppObject*)&i });
+			auto childGameObject = reflection::Component_get_gameObject(childTransform);
+			vec.emplace_back(childGameObject, childTransform);
+		}
+		return vec;
 	}
 }
 

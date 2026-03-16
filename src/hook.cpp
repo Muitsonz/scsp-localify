@@ -47,6 +47,50 @@ std::map<int, UnitIdol> savedCostumes{};
 UnitIdol lastSavedCostume;
 UnitIdol overridenMvUnitIdols[8];
 std::map<std::string, std::string> replacementTexureNames{};
+std::unordered_map<Il2CppObject*, std::unique_ptr<LocalTransform>> transformOverriding{};
+std::vector<std::pair<std::string, std::string>> savedTransformOverridingJson{};
+
+/// @return if the given `transform` is matched (maybe not modified if it's unavailable)
+bool OverrideTransform(Il2CppObject* transform) {
+	auto startSize = transformOverriding.size();
+	auto it = transformOverriding.find(transform);
+	if (it != transformOverriding.end()) {
+		auto& localTransform = it->second;
+		if (!localTransform->transform || !reflection::UnityObject_op_Implicit(localTransform->transform)) {
+			transformOverriding.erase(it->first);
+			return true;
+		}
+		else {
+			localTransform->WriteLocalPosition((Il2CppObject*)transform);
+			localTransform->WriteLocalRotation((Il2CppObject*)transform);
+			localTransform->WriteLocalScale((Il2CppObject*)transform);
+			return true;
+		}
+	}
+	auto endSize = transformOverriding.size();
+	if (endSize != startSize) {
+		std::cout << "[OverrideTransform] size changed: " << startSize << " -> " << endSize << std::endl;
+	}
+	return false;
+}
+void OverrideAllTransforms() {
+	auto startSize = transformOverriding.size();
+	for (auto& it : transformOverriding) {
+		auto& localTransform = it.second;
+		if (!localTransform->transform || !reflection::UnityObject_op_Implicit(localTransform->transform)) {
+			transformOverriding.erase(it.first);
+		}
+		else {
+			localTransform->WriteLocalPosition((Il2CppObject*)localTransform->transform);
+			localTransform->WriteLocalRotation((Il2CppObject*)localTransform->transform);
+			localTransform->WriteLocalScale((Il2CppObject*)localTransform->transform);
+		}
+	}
+	auto endSize = transformOverriding.size();
+	if (endSize != startSize) {
+		std::cout << "[OverrideAllTransforms] size changed: " << startSize << " -> " << endSize << std::endl;
+	}
+}
 
 
 void loadGUIDataCache() {
@@ -175,6 +219,9 @@ void AddSafetyHook(const char* orig_name, void* orig, void* hook, SafetyHookInli
 	printf(_fmt_##" (%s, %s)\n", _name_##_offset, MH_StatusToString(_name_##stat1), MH_StatusToString(_name_##stat2))
 #endif
 #define ADD_HOOK_1(_name_) ADD_HOOK(_name_, #_name_##" at %p")
+#define ADD_HOOK_ADDR(_name_, _str_assembly_, _str_namespace_, _str_class_, _str_method_, _val_param_count_) \
+	auto _name_##_addr = il2cpp_symbols_logged::get_method_pointer(_str_assembly_, _str_namespace_, _str_class_, _str_method_, _val_param_count_); \
+	ADD_HOOK_1(_name_);
 #pragma endregion
 
 bool exd = false;
@@ -2222,6 +2269,7 @@ namespace
 		catch (std::exception& ex) {
 			printf("MainThreadDispatcher Error: %s\n", ex.what());
 		}
+		OverrideAllTransforms();
 		return HOOK_CAST_CALL(void, MainThreadDispatcher_LateUpdate)(_this, method);
 	}
 
@@ -2734,8 +2782,7 @@ namespace
 	uintptr_t GetSubject_OnNext_addr() {
 		// var managedGenericArguments = [typeof(PRISM.Adapters.CostumeChange.CostumeChangeViewModel)];
 		auto refltype_CostumeChangeViewModel = reflection::typeof("PRISM.Adapters.dll", "PRISM.Adapters.CostumeChange", "CostumeChangeViewModel");
-		std::vector<Il2CppReflectionType*> genericArguments{ refltype_CostumeChangeViewModel };
-		auto managedGenericArguments = reflection::CreateManagedTypeArray(genericArguments);
+		auto managedGenericArguments = reflection::CreateManagedTypeArray({ refltype_CostumeChangeViewModel });
 
 		// var refltype_Subject_closed = RuntimeType.MakeGenericType(typeof(UniRx.Subject<>), managedGenericArguments);
 		auto method_RuntimeType_MakeGenericType_2 = il2cpp_symbols_logged::get_method_corlib("System", "RuntimeType", "MakeGenericType", 2);

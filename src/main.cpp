@@ -84,6 +84,7 @@ std::filesystem::path g_localify_base("scsp_localify");
 constexpr const char ConfigJson[] = "scsp-config.json";
 
 const auto CONSOLE_TITLE = L"iM@S SCSP Tools By chinosk";
+bool showStartCommand = false;
 
 namespace
 {
@@ -166,6 +167,9 @@ namespace
 
 		if (!document.HasParseError())
 		{
+			if (document.HasMember("showStartCommand") && document["showStartCommand"].GetBool()) {
+				showStartCommand = true;
+			}
 			if (document.HasMember("enableVSync")) {
 				if (document["enableVSync"].GetBool()) {
 					g_vsync_count = 1;
@@ -337,7 +341,9 @@ int __stdcall DllMain(HINSTANCE dllModule, DWORD reason, LPVOID)
 
 		if (g_enable_console) {
 			create_debug_console();
-			printf("Command: %s\n", GetCommandLineA());
+			if (showStartCommand) {
+				printf("Command: %s\n", GetCommandLineA());
+			}
 		}
 
 		for (const auto& log : logs) {

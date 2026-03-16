@@ -81,14 +81,151 @@ namespace debug {
 			(unsigned long long)ctx.R9);
 	}
 
-	void PrintNativeStackTrace(ULONG framesToSkip,  ULONG framesToCapture) {
-		PVOID* backTrace = new PVOID[framesToCapture];
-		RtlCaptureStackBackTrace(0, framesToCapture, backTrace, NULL);
-		for (int i = 0; i < framesToCapture; ++i) {
-			printf("> %p ", backTrace[i]);
+	static std::vector<const MethodInfo*> managedMethodTable{};
+	static void PrepareManagedMethodAddressTable() {
+		size_t assemblyCount = 0;
+		auto** assemblies = il2cpp_domain_get_assemblies(il2cpp_domain_get(), &assemblyCount);
+
+		for (size_t a = 0; a < assemblyCount; a++) {
+			auto* image = il2cpp_assembly_get_image((void*)assemblies[a]);
+			int classCount = il2cpp_image_get_class_count(image);
+
+			for (int i = 0; i < classCount; i++) {
+				auto* klass = il2cpp_image_get_class(image, i);
+				void* iter = nullptr;
+				const MethodInfo* method = nullptr;
+				while ((method = il2cpp_class_get_methods((void*)klass, &iter))) {
+					if (!method->methodPointer) continue;
+					managedMethodTable.push_back(method);
+				}
+			}
 		}
-		printf("\n");
-		delete[] backTrace;
+
+		std::sort(managedMethodTable.begin(), managedMethodTable.end(),
+			[](const MethodInfo* a, const MethodInfo* b) {
+				return a->methodPointer < b->methodPointer;
+			});
+	}
+	static void EnsureManagedMethodTable() {
+		if (!managedMethodTable.empty()) return;
+		PrepareManagedMethodAddressTable();
+	}
+	const std::vector<const MethodInfo*>& GetManagedMethodTable() {
+		EnsureManagedMethodTable();
+		return managedMethodTable;
+	}
+
+	const MethodInfo* ResolveAddress(uintptr_t pc) {
+		auto it = std::upper_bound(managedMethodTable.begin(), managedMethodTable.end(), pc,
+			[](uintptr_t val, const MethodInfo* m) {
+				return val < m->methodPointer;
+			});
+
+		if (it == managedMethodTable.begin()) return nullptr;
+		return *--it;
+	}
+
+	static const char* TryGetKeywordName(const std::string& token, const std::string& currentNamespace) {
+		if (currentNamespace != "System") return nullptr;
+		if (token == "Void")    return "void";
+		if (token == "Boolean") return "bool";
+		if (token == "Byte")    return "byte";
+		if (token == "SByte")   return "sbyte";
+		if (token == "Int16")   return "short";
+		if (token == "UInt16")  return "ushort";
+		if (token == "Int32")   return "int";
+		if (token == "UInt32")  return "uint";
+		if (token == "Int64")   return "long";
+		if (token == "UInt64")  return "ulong";
+		if (token == "Single")  return "float";
+		if (token == "Double")  return "double";
+		if (token == "Decimal") return "decimal";
+		if (token == "Char")    return "char";
+		if (token == "String")  return "string";
+		if (token == "Object")  return "object";
+		return nullptr;
+	}
+	static std::string GetTypeName(const Il2CppType* type, bool includeNamespace) {
+		if (!type) return "?";
+		const char* fullName = il2cpp_type_get_name(type);
+		if (!fullName) return "?";
+		std::string result;
+		std::string token;
+		std::string currentNamespace; // tracks the namespace accumulated before the final class name
+		for (char c : std::string_view(fullName)) {
+			if (c == '.') {
+				if (includeNamespace) {
+					currentNamespace += token + "."; // accumulate namespace for keyword check
+					token += "::";
+				}
+				else {
+					currentNamespace += token + "."; // accumulate even when stripping, for keyword check
+					token.clear();
+				}
+			}
+			else if (c == '<' || c == '>' || c == ',') {
+				// flush token ¡ª check for keyword substitution first
+				const char* keyword = TryGetKeywordName(token, currentNamespace);
+				// strip trailing '.' from accumulated namespace before comparing
+				std::string ns = currentNamespace.empty() ? "" : currentNamespace.substr(0, currentNamespace.size() - 1);
+				keyword = TryGetKeywordName(token, ns);
+				result += keyword ? keyword : token;
+				token.clear();
+				currentNamespace.clear(); // reset namespace for next type argument
+				result += c;
+				if (c == ',') result += ' ';
+			}
+			else {
+				token += c;
+			}
+		}
+		// flush remainder
+		std::string ns = currentNamespace.empty() ? "" : currentNamespace.substr(0, currentNamespace.size() - 1);
+		const char* keyword = TryGetKeywordName(token, ns);
+		result += keyword ? keyword : token;
+		return result;
+	}
+	std::string FormatMethodInfo(const MethodInfo* method) {
+		const char* ns = il2cpp_class_get_namespace((void*)method->klass);
+		const char* className = il2cpp_class_get_name((void*)method->klass);
+		std::string result;
+
+		if (!il2cpp_method_is_instance(method))
+			result += "static ";
+
+		auto returnTypeName = GetTypeName(il2cpp_method_get_return_type(method), false);
+		result = result + returnTypeName + " ";
+
+		auto declTypeName = GetTypeName((Il2CppType*)il2cpp_class_get_type(il2cpp_method_get_class(method)), true);
+		result = result + declTypeName + "." + il2cpp_method_get_name(method);
+
+		result += "(";
+		for (uint8_t i = 0; i < method->parameters_count; i++) {
+			if (i > 0) result += ", ";
+			auto paramTypeName = GetTypeName(il2cpp_method_get_param(method, i), false);
+			result += paramTypeName;
+		}
+		result += ")";
+
+		return result;
+	}
+
+	void PrintManagedStackTrace(ULONG framesToSkip, ULONG framesToCapture) {
+		EnsureManagedMethodTable();
+
+		std::vector<PVOID> backTrace(framesToCapture);
+		ULONG captured = RtlCaptureStackBackTrace(framesToSkip, framesToCapture, backTrace.data(), NULL);
+
+		printf("====== ManagedStackTrace ======\n");
+		for (ULONG i = 0; i < captured; i++) {
+			uintptr_t pc = reinterpret_cast<uintptr_t>(backTrace[i]);
+			const MethodInfo* method = ResolveAddress(pc);
+
+			if (method)
+				printf("  %p | %s\n", backTrace[i], FormatMethodInfo(method).c_str());
+			else
+				printf("  %p\n", backTrace[i]);
+		}
 	}
 }
 
@@ -118,6 +255,7 @@ LONG WINAPI seh_filter(EXCEPTION_POINTERS* ep) {
 
 	debug::DumpRelationMemoryHex((const void*)((uintptr_t)addr - 0x20));
 	debug::DumpRegisters();
+	debug::PrintManagedStackTrace();
 
 	return EXCEPTION_EXECUTE_HANDLER;
 }
@@ -165,6 +303,71 @@ bool ReadClipboard(std::string* text) {
 	GlobalUnlock(hData);
 	CloseClipboard();
 	return true;
+}
+
+
+LocalTransform::LocalTransform(const Il2CppObject* transform, bool readtransform) {
+	this->transform = transform;
+	if (transform) {
+		ReadLocalPosition(transform);
+		ReadLocalRotation(transform);
+		ReadLocalScale(transform);
+	}
+}
+
+LocalTransform::LocalTransform(const Il2CppObject* transform, Vector3_t localPosition, Quaternion_t localRotation, Vector3_t localScale) {
+	this->transform = transform;
+	this->localPosition = localPosition;
+	this->localRotation = localRotation;
+	this->localScale = localScale;
+}
+
+void LocalTransform::ReadLocalPosition(const Il2CppObject* transform) {
+	static auto method_Transform_get_localPosition = il2cpp_symbols_logged::get_method(
+		"UnityEngine.CoreModule.dll", "UnityEngine",
+		"Transform", "get_localPosition", 0
+	);
+	localPosition = method_Transform_get_localPosition->Invoke((Il2CppObject*)transform, {})->unbox_value<Vector3_t>();
+}
+
+void LocalTransform::ReadLocalRotation(const Il2CppObject* transform) {
+	static auto method_Transform_get_localRotation = il2cpp_symbols_logged::get_method(
+		"UnityEngine.CoreModule.dll", "UnityEngine",
+		"Transform", "get_localRotation", 0
+	);
+	localRotation = method_Transform_get_localRotation->Invoke((Il2CppObject*)transform, {})->unbox_value<Quaternion_t>();
+}
+
+void LocalTransform::ReadLocalScale(const Il2CppObject* transform) {
+	static auto method_Transform_get_localScale = il2cpp_symbols_logged::get_method(
+		"UnityEngine.CoreModule.dll", "UnityEngine",
+		"Transform", "get_localScale", 0
+	);
+	localScale = method_Transform_get_localScale->Invoke((Il2CppObject*)transform, {})->unbox_value<Vector3_t>();
+}
+
+void LocalTransform::WriteLocalPosition(Il2CppObject* transform) {
+	static auto method_Transform_set_localPosition = il2cpp_symbols_logged::get_method(
+		"UnityEngine.CoreModule.dll", "UnityEngine",
+		"Transform", "set_localPosition", 1
+	);
+	method_Transform_set_localPosition->InvokeAsVoid(transform, { (Il2CppObject*)&localPosition });
+}
+
+void LocalTransform::WriteLocalRotation(Il2CppObject* transform) {
+	static auto method_Transform_set_localRotation = il2cpp_symbols_logged::get_method(
+		"UnityEngine.CoreModule.dll", "UnityEngine",
+		"Transform", "set_localRotation", 1
+	);
+	method_Transform_set_localRotation->InvokeAsVoid(transform, { (Il2CppObject*)&localRotation });
+}
+
+void LocalTransform::WriteLocalScale(Il2CppObject* transform) {
+	static auto method_Transform_set_localScale = il2cpp_symbols_logged::get_method(
+		"UnityEngine.CoreModule.dll", "UnityEngine",
+		"Transform", "set_localScale", 1
+	);
+	method_Transform_set_localScale->InvokeAsVoid(transform, { (Il2CppObject*)&localScale });
 }
 
 
@@ -273,6 +476,45 @@ void UnitIdol::LoadJson(const char* json) {
 		}
 	}
 	return;
+}
+
+
+std::vector<std::pair<const Il2CppObject*, const Il2CppObject*>> GetActiveIdolObjects() {
+	static auto method_SceneManager_get_sceneCount = il2cpp_symbols_logged::get_method(
+		"UnityEngine.CoreModule.dll", "UnityEngine.SceneManagement",
+		"SceneManager", "get_sceneCount", 0
+	);
+	static auto method_SceneManager_GetSceneAt = il2cpp_symbols_logged::get_method(
+		"UnityEngine.CoreModule.dll", "UnityEngine.SceneManagement",
+		"SceneManager", "GetSceneAt", 1
+	);
+	static auto method_Scene_GetRootGameObjects = il2cpp_symbols_logged::get_method(
+		"UnityEngine.CoreModule.dll", "UnityEngine.SceneManagement",
+		"Scene", "GetRootGameObjects", 0
+	);
+
+	std::vector<std::pair<const Il2CppObject*, const Il2CppObject*>> vec{};
+	auto sceneCount = method_SceneManager_get_sceneCount->Invoke(nullptr, {})->unbox_value<int>();
+	for (int sceneIndex = 0; sceneIndex < sceneCount; ++sceneIndex) {
+		auto scene = method_SceneManager_GetSceneAt->Invoke(nullptr, { (Il2CppObject*)&sceneIndex });
+		auto rootObjects = method_Scene_GetRootGameObjects->Invoke((Il2CppObject*)il2cpp_object_unbox(scene), {});
+		int rootObjectsLength = il2cpp_array_length(rootObjects);
+		for (int i = 0; i < rootObjectsLength; ++i) {
+			auto obj = (Il2CppObject*)il2cpp_symbols::array_get_value(rootObjects, i);
+			il2cpp_symbols::EnumerateAllChildrenGameObjects(obj,
+				[&](Il2CppObject* go, Il2CppObject* tf) -> int {
+					auto name = reflection::UnityObject_get_name(go)->ToUtf8String();
+					if (name.starts_with("m_ALL_")) {
+						std::cout << "[GetActiveIdolObjects] " << name << std::endl;
+						vec.emplace_back(go, tf);
+						return -1;
+					}
+					else return 1;
+				}
+			);
+		}
+	}
+	return vec;
 }
 
 

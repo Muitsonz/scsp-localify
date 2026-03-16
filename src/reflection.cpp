@@ -41,10 +41,37 @@ namespace reflection {
 		return managed;
 	}
 
-	Il2CppArray* CreateManagedTypeArray(const std::vector<Il2CppReflectionType*>& vector) {
+	Il2CppArray* CreateManagedTypeArray(const std::vector<const Il2CppReflectionType*>& vector) {
 		static auto klass_Type = il2cpp_symbols_logged::get_class_corlib("System", "Type");
 		return CreateManagedArray(klass_Type, vector);
 	}
+
+	Il2CppClass* MakeGenericType(Il2CppReflectionType* reflType, std::vector<const Il2CppReflectionType*>& genericArguments) {
+		static auto method_Type_MakeGenericType = il2cpp_symbols_logged::get_method_corlib(
+			"System", "RuntimeType", "MakeGenericType", 1
+		);
+		auto managedTypeArguments = CreateManagedTypeArray(genericArguments);
+		auto reflGenericType = method_Type_MakeGenericType->Invoke<Il2CppReflectionType*>(
+			(Il2CppObject*)reflType,
+			{ (Il2CppObject*)managedTypeArguments }
+		);
+		return il2cpp_class_from_system_type(reflGenericType);
+	}
+
+	const MethodInfo* MakeGenericMethod(MethodInfo* method, const std::vector<const Il2CppReflectionType*>& genericArguments) {
+		static auto method_MethodInfo_MakeGenericMethod = il2cpp_symbols_logged::get_method_corlib(
+			"System.Reflection", "RuntimeMethodInfo", "MakeGenericMethod", 1
+		);
+		auto reflMethod = il2cpp_method_get_object(method, (Il2CppClass*)method->klass);
+		auto managedTypeArguments = CreateManagedTypeArray(genericArguments);
+		auto reflGenericMethod = method_MethodInfo_MakeGenericMethod->Invoke<Il2CppReflectionMethod*>(
+			(Il2CppObject*)reflMethod,
+			{ (Il2CppObject*)managedTypeArguments }
+		);
+		// il2cpp_method_get_from_reflection will crash; idk why
+		return reflGenericMethod->method;
+	}
+
 
 	Il2CppReflectionType* Object_GetType(Il2CppObject* instance) {
 		if (instance == nullptr) return nullptr;
@@ -65,28 +92,46 @@ namespace reflection {
 		return Invoke(method, nullptr, (Il2CppObject**)&refl, "Activator_CreateInstance");
 	}
 
-	Il2CppString* UnityObject_get_name(Il2CppObject* obj) {
+	Il2CppString* UnityObject_get_name(const Il2CppObject* obj) {
 		static auto klass = il2cpp_symbols_logged::get_class("UnityEngine.CoreModule.dll", "UnityEngine", "Object");
 		static auto method = il2cpp_class_get_method_from_name(klass, "get_name", 0);
-		return method->Invoke<Il2CppString*>(obj, {});
+		return method->Invoke<Il2CppString*>((Il2CppObject*)obj, {});
 	}
 
-	Il2CppObject* Component_get_gameObject(Il2CppObject* c) {
+	bool UnityObject_op_Implicit(const Il2CppObject* exists) {
+		static auto method = il2cpp_symbols_logged::get_method(
+			"UnityEngine.CoreModule.dll", "UnityEngine",
+			"Object", "op_Implicit", 1
+		);
+		return method->Invoke(nullptr, { (Il2CppObject*)exists })->unbox_value<bool>();
+	}
+
+
+	Il2CppObject* Component_get_gameObject(const Il2CppObject* c) {
 		static auto klass = il2cpp_symbols_logged::get_class("UnityEngine.CoreModule.dll", "UnityEngine", "Component");
 		static auto method = il2cpp_class_get_method_from_name(klass, "get_gameObject", 0);
-		return method->Invoke<Il2CppObject*>(c, {});
+		return method->Invoke<Il2CppObject*>((Il2CppObject*)c, {});
 	}
 
-	Il2CppObject* GameObject_get_transform(Il2CppObject* go) {
+	Il2CppObject* GameObject_get_transform(const Il2CppObject* go) {
 		static auto klass = il2cpp_symbols_logged::get_class("UnityEngine.CoreModule.dll", "UnityEngine", "GameObject");
 		static auto method = il2cpp_class_get_method_from_name(klass, "get_transform", 0);
-		return method->Invoke<Il2CppObject*>(go, {});
+		return method->Invoke<Il2CppObject*>((Il2CppObject*)go, {});
 	}
 
-	Il2CppObject* Transform_get_parent(Il2CppObject* transform) {
+	Il2CppArray* GameObject_GetComponents(const Il2CppObject* go) {
+		static auto method = il2cpp_symbols_logged::get_method(
+			"UnityEngine.CoreModule.dll", "UnityEngine",
+			"GameObject", "GetComponents", 0
+		);
+		auto genericMethod = MakeGenericMethod(method, { typeof("UnityEngine.CoreModule.dll", "UnityEngine","Component") });
+		return genericMethod->Invoke<Il2CppArray*>((Il2CppObject*)go, {});
+	}
+
+	Il2CppObject* Transform_get_parent(const Il2CppObject* transform) {
 		static auto klass = il2cpp_symbols_logged::get_class("UnityEngine.CoreModule.dll", "UnityEngine", "Transform");
 		static auto method = il2cpp_class_get_method_from_name(klass, "get_parent", 0);
-		return method->Invoke<Il2CppObject*>(transform, {});
+		return method->Invoke<Il2CppObject*>((Il2CppObject*)transform, {});
 	}
 
 
@@ -132,5 +177,25 @@ namespace reflection::helper {
 		auto parentTf = reflection::Transform_get_parent(tf);
 		if (!parentTf) return nullptr;
 		return reflection::Component_get_gameObject(parentTf);
+	}
+
+	Il2CppClass* GetGenericListClass(Il2CppReflectionType* genericArgument) {
+		static auto method_Type_MakeGenericType = il2cpp_symbols_logged::get_method_corlib(
+			"System", "RuntimeType", "MakeGenericType", 1
+		);
+		auto managedTypeArguments = CreateManagedTypeArray({ genericArgument });
+		auto managedGenericType = method_Type_MakeGenericType->Invoke<Il2CppReflectionType*>(
+			(Il2CppObject*)typeof_corlib("System.Collections.Generic", "List`1"),
+			{ (Il2CppObject*)managedTypeArguments }
+		);
+		return il2cpp_class_from_system_type(managedGenericType);
+	}
+
+	Il2CppObject* CreateNewList(Il2CppReflectionType* genericArgument) {
+		auto klass = GetGenericListClass(genericArgument);
+		auto list = (Il2CppObject*)il2cpp_object_new(klass);
+		il2cpp_class_get_method_from_name(klass, ".ctor", 0)
+			->InvokeAsVoid(list, {});
+		return list;
 	}
 }

@@ -1,6 +1,7 @@
 #include "imgui/imgui.h"
 #include "stdinclude.hpp"
 #include "scgui/scGUIData.hpp"
+#include "scgui/scGUIAction.hpp"
 #include <rapidjson/document.h>
 #include <rapidjson/writer.h>
 #include <rapidjson/stringbuffer.h>
@@ -145,10 +146,33 @@ namespace SCGUILoop {
 	static std::vector<FreeCamState> freeCamSlots(1);
 	char newFreeCamSlotName[32]{};
 
-	std::string messageBoxContent{};
+	// call ShowMessageBox(...) function instead of setting this varaible directly
+	std::string ___messageBoxContent{};
+	// call ShowMessageBox(...) function instead of setting this varaible directly
+	bool ___showMessageBox = false;
 	void ShowMessageBox(const std::string& message) {
-		messageBoxContent = message;
-		ImGui::OpenPopup("MessageBox");
+		___messageBoxContent = message;
+		___showMessageBox = true;
+	}
+
+	// call ShowInputPopup(...) function instead of setting this varaible directly
+	bool ___showInputPopup = false;
+	// call ShowInputPopup(...) function instead of setting this varaible directly
+	std::string ___inputPopupMessage{};
+	// call ShowInputPopup(...) function instead of setting this varaible directly
+	std::function< void(bool isOk, std::string input)> ___inputPopupCallback = nullptr;
+	// don't access this varaible directly
+	char ___inputPopupBuffer[1024]{};
+	void ShowInputPopup(std::string message, std::string initValue, std::function<void(bool isOk, std::string input)> callback) {
+		if (___inputPopupCallback != nullptr) {
+			std::cerr << "[InputPopup] The popup is already open." << std::endl;
+		}
+		else {
+			___inputPopupCallback = callback;
+			___inputPopupMessage = message;
+			___showInputPopup = true;
+			snprintf(___inputPopupBuffer, sizeof(___inputPopupBuffer), "%s", initValue.c_str());
+		}
 	}
 
 	void charaParamEditLoop() {
@@ -394,6 +418,21 @@ namespace SCGUILoop {
 			ImGui::EndPopup();
 		}
 	}
+
+	void PosesLoop();
+	int selectedPoseIndex = -1;
+	struct ScannedGameObjectData {
+		Il2CppObject* gameObject;
+		std::string objName;
+		std::string displayName;
+
+		explicit operator bool() const {
+			return reflection::UnityObject_op_Implicit(gameObject);
+		}
+	};
+	std::vector<ScannedGameObjectData> scannedGameObjects{};
+
+	void devTabLoop();
 
 	void mainLoop() {
 		if (ImGui::Begin("SC Plugin Config")) {
@@ -659,7 +698,7 @@ namespace SCGUILoop {
 				}
 			}
 
-			if (ImGui::CollapsingHeader("MagicaCloth"), ImGuiTreeNodeFlags_DefaultOpen) {
+			if (ImGui::CollapsingHeader("MagicaCloth", ImGuiTreeNodeFlags_DefaultOpen)) {
 				ImGui::Checkbox("Override MagicaCloth", &g_magicacloth_override);
 				ImGui::SameLine();
 				HELP_TOOLTIP("(?)", "数据在模型加载时被更新。\nData is only updated when loading models.");
@@ -674,7 +713,7 @@ namespace SCGUILoop {
 				ImGui::SameLine();
 				HELP_TOOLTIP("(?)", "并非所有数值均有效。勾选此选项可以了解修改是否被应用。\nNot all values are valid. Checking this can learn if the modification is applied.");
 
-				if (g_magicacloth_override) {
+				if (ImGui::TreeNode("Details")) {
 					INPUT_AND_SLIDER_FLOAT("Inertia.min", &g_magicacloth_inertia_min, 0.0f, 1.0f);
 					INPUT_AND_SLIDER_FLOAT("Inertia.max", &g_magicacloth_inertia_max, 0.0f, 1.0f);
 					INPUT_AND_SLIDER_FLOAT("Radius.min", &g_magicacloth_radius_min, 0.0f, 1.0f);
@@ -688,10 +727,11 @@ namespace SCGUILoop {
 					ImGui::InputFloat("ParticleSpeedLimit", &g_magicacloth_particleSpeedLimit);
 					ImGui::InputFloat("Spring.LimitDistance", &g_magicacloth_springLimitDistance);
 					ImGui::InputFloat("Spring.SpringNoise", &g_magicacloth_springNoise);
+					ImGui::TreePop();
 				}
 			}
 
-			if (ImGui::CollapsingHeader("Assets"), ImGuiTreeNodeFlags_DefaultOpen) {
+			if (ImGui::CollapsingHeader("Assets", ImGuiTreeNodeFlags_DefaultOpen)) {
 				ImGui::Checkbox("Use quick probing for unknown shaders", &g_shader_quickprobing);
 				ImGui::SameLine();
 				HELP_TOOLTIP("(?)", "对不认识的渲染程序启用快速探测。\nUse quick probing for unknwon shaders. (quick upper: 8192)");
@@ -719,6 +759,10 @@ namespace SCGUILoop {
 				}
 			}
 
+			if (ImGui::CollapsingHeader("Poses", ImGuiTreeNodeFlags_DefaultOpen)) {
+				PosesLoop();
+			}
+
 			if (ImGui::CollapsingHeader("Legacy", ImGuiTreeNodeFlags_None)) {
 				ImGui::Checkbox("Live Allow Same Idol (Dangerous)", &g_allow_same_idol);
 				ImGui::SameLine();
@@ -728,16 +772,39 @@ namespace SCGUILoop {
 			}
 
 			if (ImGui::CollapsingHeader("Devs", ImGuiTreeNodeFlags_None)) {
-#ifdef __TOOL_HOOK_NETWORKING__
-				ImGui::Checkbox("Output networking calls", &tools::output_networking_calls);
-#endif
+				devTabLoop();
 			}
+		}
 
+		if (___showMessageBox) {
+			ImGui::OpenPopup("MessageBox");
 		}
 		if (ImGui::BeginPopupModal("MessageBox", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
-			ImGui::Text("%s", messageBoxContent.c_str());
+			___showMessageBox = false;
+			ImGui::Text("%s", ___messageBoxContent.c_str());
 			if (ImGui::Button("OK")) {
 				ImGui::CloseCurrentPopup();
+			}
+			ImGui::EndPopup();
+		}
+
+		if (___showInputPopup) {
+			ImGui::OpenPopup("InputPopup");
+		}
+		if (ImGui::BeginPopupModal("InputPopup", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+			___showInputPopup = false;
+			ImGui::Text("%s", ___inputPopupMessage.c_str());
+			ImGui::InputText("##InputPopupText", ___inputPopupBuffer, IM_ARRAYSIZE(___inputPopupBuffer));
+			if (ImGui::Button("OK", ImVec2(120, 0))) {
+				___inputPopupCallback(true, ___inputPopupBuffer);
+				ImGui::CloseCurrentPopup();
+				___inputPopupCallback = nullptr;
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+				___inputPopupCallback(false, "");
+				ImGui::CloseCurrentPopup();
+				___inputPopupCallback = nullptr;
 			}
 			ImGui::EndPopup();
 		}
@@ -745,5 +812,192 @@ namespace SCGUILoop {
 		if (g_enable_chara_param_edit) charaParamEditLoop();
 		if (g_save_and_replace_costume_changes) savedCostumeDataLoop();
 		if (g_overrie_mv_unit_idols) overrideMvUnitIdolLoop();
+	}
+
+
+	void PosesLoop() {
+		ImGui::PushID("PosesLoop");
+
+		// btn Scan idol poses
+		ImGui::Dummy(ImVec2(40, 0));
+		ImGui::SameLine();
+		if (ImGui::Button("Scan idol objects")) {
+			mainThreadTasks.push_back([]() {
+				scannedGameObjects.clear();
+				auto idols = GetActiveIdolObjects();
+				if (idols.size() == 0) {
+					std::cerr << "[ScanIdolObjects] No idol object found." << std::endl;
+				}
+				for (auto& pair : idols) {
+					auto name = reflection::UnityObject_get_name(pair.first)->ToUtf8String();
+					scannedGameObjects.emplace_back((Il2CppObject*)pair.first, name, name.substr(6, 2));
+				}
+				return true;
+				});
+		}
+
+		ImGui::Separator();
+
+		ImGui::Text("Known GameObjects");
+
+		// list of scannedGameObjects: [txtDisplayName - btnSerialize - btnApply - btnEdit]
+		ImGui::Indent();
+		for (int i = 0; i < scannedGameObjects.size(); ++i) {
+			ImGui::PushID(i);
+			auto& data = scannedGameObjects[i];
+
+			// txtDisplayName
+			ImGui::Text(data.displayName.c_str());
+			ImGui::SameLine();
+			// btnSerialize
+			if (ImGui::Button("Serialize")) {
+				if (!data) {
+					ShowMessageBox("This GameObject isn't alive now.");
+					std::cerr << "[ScanIdolObjects] Target object to serialize isn't alive now." << std::endl;
+					scannedGameObjects.erase(scannedGameObjects.begin() + i);
+					--i;
+					selectedPoseIndex = -1;
+				}
+				else {
+					auto json = SerializeIdolPose(data.gameObject);
+					if (WriteClipboard(json)) {
+						ShowMessageBox("Copied!");
+						std::cout << "Idol pose json copied. (length = " << json.length() << ")" << std::endl;
+					}
+					else {
+						ShowMessageBox("Failed to write clipboard. Check console for the serialized json.");
+						std::cout << "====== Idol Pose Json ======" << std::endl
+							<< json << std::endl
+							<< "====== end of idol pose json ======" << std::endl;
+					}
+					savedTransformOverridingJson.emplace_back(data.displayName, json);
+				}
+			}
+			ImGui::SameLine();
+			// btnApply
+			if (ImGui::Button("ApplyTo")) {
+				if (!data) {
+					ShowMessageBox("This GameObject isn't alive now.");
+					std::cerr << "[ScanIdolObjects] Target object to apply isn't alive now." << std::endl;
+					scannedGameObjects.erase(scannedGameObjects.begin() + i);
+					--i;
+					selectedPoseIndex = -1;
+				}
+				else if (selectedPoseIndex < 0 || selectedPoseIndex >= savedTransformOverridingJson.size()) {
+					ShowMessageBox("Invalid selection state. Select a valid pose data before applying.");
+				}
+				else {
+					auto& json = savedTransformOverridingJson[selectedPoseIndex].second;
+					DeserializeIdolPose(json, data.gameObject, true);
+				}
+			}
+			ImGui::SameLine();
+			// btnClear
+			if (ImGui::Button("Clear")) {
+				if (!data) {
+					ShowMessageBox("This GameObject isn't alive now.");
+					std::cerr << "[ScanIdolObjects] Target object to clear isn't alive now." << std::endl;
+					scannedGameObjects.erase(scannedGameObjects.begin() + i);
+					--i;
+					selectedPoseIndex = -1;
+				}
+				else {
+					ClearIdolPose(data.gameObject);
+				}
+			}
+
+			ImGui::PopID();
+		}
+		ImGui::Unindent();
+
+		ImGui::Separator();
+
+		// indented header "Cached poses"
+		ImGui::Text("Cached poses");
+
+		// list of savedTransformOverridingJson: [btnName(select) - btnRename - btnCopy - btnRemove]
+		ImGui::Indent();
+		for (int i = 0; i < savedTransformOverridingJson.size(); ++i) {
+			ImGui::PushID(i);
+			// btnName(select), with a different color when selected
+			ImGui::PushStyleColor(
+				ImGuiCol_Button, selectedPoseIndex == i
+				? ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive)
+				: ImGui::GetStyleColorVec4(ImGuiCol_Button)
+			);
+			if (ImGui::Button(savedTransformOverridingJson[i].first.c_str())) {
+				if (selectedPoseIndex == i) {
+					selectedPoseIndex = -1;
+				}
+				else {
+					selectedPoseIndex = i;
+				}
+			}
+			ImGui::PopStyleColor();
+			ImGui::SameLine();
+			if (ImGui::Button("Rename")) {
+				int copiedIndex = i;
+				ShowInputPopup("Enter a new name:", savedTransformOverridingJson[copiedIndex].first, [copiedIndex](bool isOk, std::string input) {
+					if (isOk) {
+						savedTransformOverridingJson[copiedIndex].first = input;
+					}
+					});
+			}
+			ImGui::SameLine();
+			// btnCopy
+			if (ImGui::Button("Copy")) {
+				auto r = WriteClipboard(savedTransformOverridingJson[i].second);
+				ShowMessageBox(r ? "Success" : "Failed");
+			}
+			ImGui::SameLine();
+			// btnRemove
+			if (ImGui::Button("Remove")) {
+				savedTransformOverridingJson.erase(savedTransformOverridingJson.begin() + i);
+				--i;
+				selectedPoseIndex = -1;
+			}
+			ImGui::PopID();
+		}
+		ImGui::Unindent();
+
+		// btn Clear cached poses
+		if (ImGui::Button("Clear cached poses")) {
+			savedTransformOverridingJson.clear();
+		}
+
+		// btn import from clipboard
+		ImGui::SameLine();
+		if (ImGui::Button("Import from clipboard")) {
+			std::string json;
+			if (ReadClipboard(&json)) {
+				savedTransformOverridingJson.emplace_back("paste", json);
+			}
+			else {
+				ShowMessageBox("Failed to read clipboard.");
+			}
+		}
+
+		ImGui::Separator();
+
+		ImGui::Dummy(ImVec2(40, 0));
+		ImGui::SameLine();
+		if (ImGui::Button("Clear all overridings")) {
+			transformOverriding.clear();
+		}
+
+		ImGui::PopID();
+	}
+
+
+	void devTabLoop() {
+#ifdef __TOOL_HOOK_NETWORKING__
+		ImGui::Checkbox("Output networking calls", &tools::output_networking_calls);
+#endif
+#ifdef __TOOL_BUILD_CALLING_RELATIONS__
+		if (ImGui::Button("BuildCallingRelations")) {
+			tools::BuildCallingRelations();
+			ShowMessageBox("ok");
+		}
+#endif
 	}
 }

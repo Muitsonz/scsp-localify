@@ -73,23 +73,54 @@
 #define HOOK_GET_ORIG(_name_) (_name_##_orig)
 #define HOOK_CAST_CALL(_ret_type_, _name_) (reinterpret_cast<decltype(_name_##_hook)*>(_name_##_orig))
 #endif
+#define HOOK_DEF(_return_type_, _name_) HOOK_ORIG_TYPE _name_##_orig; _return_type_ _name_##_hook
 
 
 #define PRINT(var) std::cout << #var << " = " << var << std::endl;
 #define PRINT_ONCE(_txt_var_) static bool __print_once_##_txt_var_ = [] { PRINT(_txt_var_); return true; }();
 LONG WINAPI seh_filter(EXCEPTION_POINTERS* ep);
+#define __EXCEPT() __except (seh_filter(GetExceptionInformation())) { }
 #define __EXCEPT(strContext) __except (seh_filter(GetExceptionInformation())) { std::cout << "SEH exception detected in '" << strContext << "'.\n"; }
 
 
 namespace debug {
 	void DumpRelationMemoryHex(const void* target, const size_t length = 0x40);
 	void DumpRegisters();
-	void PrintNativeStackTrace(ULONG framesToSkip, ULONG framesToCapture);
+
+	const std::vector<const MethodInfo*>& GetManagedMethodTable();
+	const MethodInfo* ResolveAddress(uintptr_t pc);
+	std::string FormatMethodInfo(const MethodInfo* method);
+
+	void PrintManagedStackTrace(ULONG framesToSkip = 0, ULONG framesToCapture = 64);
 }
 
+// @return remove the callback after call or not; true to remove, false to keep.
+extern std::vector<std::function<bool()>> mainThreadTasks;
 
 bool WriteClipboard(std::string& text);
 bool ReadClipboard(std::string* text);
+
+struct LocalTransform {
+	const Il2CppObject* transform{};
+	Vector3_t localPosition{};
+	Quaternion_t localRotation{};
+	Vector3_t localScale{};
+
+	LocalTransform() {}
+	LocalTransform(const Il2CppObject* transform, bool readTransform);
+	LocalTransform(const Il2CppObject* transform, Vector3_t localPosition, Quaternion_t localRotation, Vector3_t localScale);
+
+	void ReadLocalPosition(const Il2CppObject* transform);
+	void ReadLocalRotation(const Il2CppObject* transform);
+	void ReadLocalScale(const Il2CppObject* transform);
+
+	void WriteLocalPosition(Il2CppObject* transform);
+	void WriteLocalRotation(Il2CppObject* transform);
+	void WriteLocalScale(Il2CppObject* transform);
+};
+extern std::unordered_map<Il2CppObject*, std::unique_ptr<LocalTransform>> transformOverriding;
+// pair { first = displayName, second = jsonText }
+extern std::vector<std::pair<std::string, std::string>> savedTransformOverridingJson;
 
 
 class CharaParam_t {
@@ -311,6 +342,9 @@ enum class ClothForceMode {
 };
 
 
+// @return (const Il2CppObject* gameObject, const Il2CppObject* transform)[]
+std::vector<std::pair<const Il2CppObject*, const Il2CppObject*>> GetActiveIdolObjects();
+
 extern std::map<int, std::string> swayTypes;
 extern std::map<int, CharaSwayStringParam_t> charaSwayStringOffset;
 extern std::map<int, UnitIdol> savedCostumes;
@@ -380,4 +414,5 @@ extern float g_magicacloth_springNoise;
 namespace tools {
 	extern bool output_networking_calls;
 	extern void AddNetworkingHooks();
+	extern void BuildCallingRelations();
 }

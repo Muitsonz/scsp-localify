@@ -66,10 +66,10 @@ public:
 struct Quaternion_t
 {
 public:
-	float w;
 	float x;
 	float y;
 	float z;
+	float w;
 };
 
 struct Resolution_t
@@ -235,6 +235,7 @@ struct TypedField
 	}
 };
 
+
 struct Il2CppObject
 {
 	union
@@ -243,6 +244,12 @@ struct Il2CppObject
 		void* vtable;
 	};
 	void* monitor;
+
+public:
+	/// @brief a wrapper of `il2cpp_object_invoke`. <T is struct>(not a pointer)
+	template <typename T> inline T* unbox_ptr();
+	/// @brief unbox a struct and return by **copying** its value content as T. <T is struct>
+	template <typename T> inline T unbox_value();
 };
 
 struct Il2CppString : public Il2CppObject
@@ -422,6 +429,10 @@ typedef uint16_t Il2CppChar;
 #endif
 
 // function types
+typedef const void** (*il2cpp_domain_get_assemblies_t)(const void* domain, size_t* size);
+typedef size_t(*il2cpp_image_get_class_count_t)(const void* image);
+typedef const Il2CppClass* (*il2cpp_image_get_class_t)(const void* image, size_t index);
+typedef const char* (*il2cpp_image_get_name_t)(const void* image);
 typedef Il2CppString* (*il2cpp_string_new_utf16_t)(const wchar_t* str, unsigned int len);
 typedef Il2CppString* (*il2cpp_string_new_t)(const char* str);
 typedef void* (*il2cpp_domain_get_t)();
@@ -433,6 +444,7 @@ typedef MethodInfo* (*il2cpp_class_get_methods_t)(void* klass, void** iter);
 typedef MethodInfo* (*il2cpp_class_get_method_from_name_t)(void* klass, const char* name, int argsCount);
 typedef uint32_t(*il2cpp_method_get_param_count_t)(const MethodInfo* method);
 typedef Il2CppType* (*il2cpp_method_get_param_t)(const MethodInfo* method, uint32_t index);
+typedef const MethodInfo* (*il2cpp_method_get_from_reflection_t)(const Il2CppReflectionMethod* method);
 typedef Il2CppReflectionMethod* (*il2cpp_method_get_object_t)(const MethodInfo* method, Il2CppClass* refclass);
 typedef const Il2CppType* (*il2cpp_method_get_return_type_t)(const MethodInfo* method);
 typedef Il2CppClass* (*il2cpp_method_get_declaring_type_t)(const MethodInfo* method);
@@ -457,7 +469,7 @@ typedef void* (*il2cpp_runtime_invoke_t)(MethodInfo* method, void* obj, void** p
 typedef void* (*il2cpp_class_get_static_field_data_t)(void* klass);
 typedef void (*il2cpp_field_get_value_t)(void* obj, void* field, void* value);
 typedef void* (*il2cpp_field_get_value_object_t)(void* field, void* obj);
-typedef void* (*il2cpp_class_from_system_type_t)(Il2CppReflectionType* type);
+typedef Il2CppClass* (*il2cpp_class_from_system_type_t)(Il2CppReflectionType* type);
 typedef void* (*il2cpp_get_corlib_t)();
 typedef const char* (*il2cpp_class_get_namespace_t)(void* klass);
 typedef const char* (*il2cpp_class_get_name_t)(void* klass);
@@ -470,6 +482,7 @@ typedef uint32_t(*il2cpp_array_length_t)(void* arr);
 typedef void* (*il2cpp_class_get_parent_t)(void* klass);
 typedef const char* (*il2cpp_method_get_name_t)(const MethodInfo* method);
 typedef void* (*il2cpp_method_get_class_t)(const MethodInfo* method);
+typedef bool(*il2cpp_method_is_instance_t)(const MethodInfo* method);
 typedef Il2CppClass* (*il2cpp_object_get_class_t)(Il2CppObject* instance);
 typedef Il2CppChar* (*il2cpp_string_chars_t)(Il2CppString* str);
 typedef int32_t(*il2cpp_string_length_t) (Il2CppString* str);
@@ -477,6 +490,10 @@ typedef Il2CppClass* (*il2cpp_type_get_class_or_element_class_t)(const Il2CppTyp
 typedef char* (*il2cpp_type_get_name_t)(const Il2CppType* type);
 
 // function defines
+extern il2cpp_domain_get_assemblies_t il2cpp_domain_get_assemblies;
+extern il2cpp_image_get_class_count_t il2cpp_image_get_class_count;
+extern il2cpp_image_get_class_t il2cpp_image_get_class;
+extern il2cpp_image_get_name_t il2cpp_image_get_name;
 extern il2cpp_string_new_utf16_t il2cpp_string_new_utf16;
 extern il2cpp_string_new_t il2cpp_string_new;
 extern il2cpp_domain_get_t il2cpp_domain_get;
@@ -488,6 +505,7 @@ extern il2cpp_class_get_methods_t il2cpp_class_get_methods;
 extern il2cpp_class_get_method_from_name_t il2cpp_class_get_method_from_name;
 extern il2cpp_method_get_param_count_t il2cpp_method_get_param_count;
 extern il2cpp_method_get_param_t il2cpp_method_get_param;
+extern il2cpp_method_get_from_reflection_t il2cpp_method_get_from_reflection;
 extern il2cpp_method_get_object_t il2cpp_method_get_object;
 extern il2cpp_method_get_return_type_t il2cpp_method_get_return_type;
 extern il2cpp_method_get_declaring_type_t il2cpp_method_get_declaring_type;
@@ -525,6 +543,7 @@ extern il2cpp_array_length_t il2cpp_array_length;
 extern il2cpp_class_get_parent_t il2cpp_class_get_parent;
 extern il2cpp_method_get_name_t il2cpp_method_get_name;
 extern il2cpp_method_get_class_t il2cpp_method_get_class;
+extern il2cpp_method_is_instance_t il2cpp_method_is_instance;
 extern il2cpp_object_get_class_t il2cpp_object_get_class;
 extern il2cpp_string_chars_t il2cpp_string_chars;
 extern il2cpp_string_length_t il2cpp_string_length;
@@ -569,12 +588,21 @@ struct MethodInfo
 	uint8_t is_marshaled_from_native : 1;
 
 private:
-	Il2CppObject* ReflectionInvoke(const Il2CppObject* instance, std::initializer_list<Il2CppObject*> params) const;
+	Il2CppObject* ReflectionInvoke(Il2CppObject* instance, std::initializer_list<Il2CppObject*> params) const;
 public:
-	void InvokeVoid(const Il2CppObject* instance, std::initializer_list<Il2CppObject*> params) const;
-	template <typename T = Il2CppObject*> T Invoke(const Il2CppObject* instance, std::initializer_list<Il2CppObject*> params) const {
+	template <typename T = Il2CppObject*> inline T Invoke(Il2CppObject* instance, std::initializer_list<Il2CppObject*> params) const {
 		auto ret = ReflectionInvoke(instance, params);
 		return (T)ret;
+	}
+	inline void InvokeAsVoid(Il2CppObject* instance, std::initializer_list<Il2CppObject*> params) const {
+		Invoke(instance, params);
+	}
+	template <typename T = Il2CppObject*> inline T InvokeStruct(Il2CppObject* instance, std::initializer_list<Il2CppObject*> params) const {
+		auto ret = ReflectionInvoke((Il2CppObject*)il2cpp_object_unbox(instance), params);
+		return (T)ret;
+	}
+	inline void InvokeStructAsVoid(Il2CppObject* instance, std::initializer_list<Il2CppObject*> params) const {
+		InvokeStruct(instance, params);
 	}
 	std::string GetFullName() const;
 	bool IsName(const char* methodName = nullptr, const char* klassName = nullptr, const char* namespaze = nullptr) const;
@@ -702,12 +730,18 @@ namespace il2cpp_symbols
 
 	const char* il2cpp_method_get_param_type_name(const MethodInfo* mi, uint32_t index);
 
-	template <typename T> T unbox(Il2CppObject* boxed) { return *(T*)il2cpp_object_unbox(boxed); }
+	template <typename T> inline T unbox(Il2CppObject* boxed) { return *(T*)il2cpp_object_unbox(boxed); }
 
 	Il2CppClass* get_nested_class(Il2CppClass* klass, const char* nestedClassName);
 
 	// @param pIncludedParentCount: [In] how many parent gameobjects' names should be included, NULL as 0; [Out] how many names are actually used, only returns when not NULL
-	std::string get_unity_gameobject_fullname(Il2CppObject* obj, bool excludeThisName = false, __inout_opt int* pIncludedParentCount = nullptr);
+	std::string get_unity_gameobject_fullname(const Il2CppObject* obj, bool excludeThisName = false, __inout_opt int* pIncludedParentCount = nullptr);
+
+	/// @param `callback` (Il2CppObject* gameObject, Il2CppObject* transform) -> int keepEnumerating(1: continue; 0: break; -1: continueButNoFurtherOfThis)
+	/// @return the value returned by callback
+	int EnumerateAllChildrenGameObjects(Il2CppObject* gameObject, const std::function<int(Il2CppObject* gameObject, Il2CppObject* transform)>& callback);
+	/// @param `out_vector` (Il2CppObject* gameObject, Il2CppObject* transform)
+	std::vector<std::pair<Il2CppObject*, Il2CppObject*>> GetChildrenGameObjects(const Il2CppObject* gameObject);
 }
 
 namespace il2cpp_symbols_logged {
@@ -719,3 +753,7 @@ namespace il2cpp_symbols_logged {
 	MethodInfo* get_method_corlib(const char* namespaze, const char* klassName, const char* name, int argsCount);
 	uintptr_t get_method_pointer(const char* assemblyName, const char* namespaze, const char* klassName, const char* name, int argsCount);
 }
+
+
+template <typename T> T* Il2CppObject::unbox_ptr() { return (T*)il2cpp_object_unbox(this); }
+template <typename T> T Il2CppObject::unbox_value() { return il2cpp_symbols::unbox<T>(this); }

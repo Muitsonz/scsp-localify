@@ -383,6 +383,15 @@ namespace Utils {
 }
 
 
+void* activeCostumeChangeViewModel = nullptr;
+HOOK_DEF(void, CostumeChangeViewModel_Apply)(void* _this) {
+	// called to save state;
+	// for dressorder, it's called each selection; for pre-MV, it's called when clicking Confirm
+	printf("CostumeChangeViewModel_Apply\n");
+	HOOK_CAST_CALL(void, CostumeChangeViewModel_Apply)(_this);
+}
+
+
 namespace
 {
 	void path_game_assembly();
@@ -2945,14 +2954,8 @@ namespace
 	}
 
 
-	HOOK_DEF(void, CostumeChangeViewModel_Apply)(void* _this) {
-		// called to save state;
-		// for dressorder, it's called each selection; for pre-MV, it's called when clicking Confirm
-		printf("CostumeChangeViewModel_Apply\n");
-		HOOK_CAST_CALL(void, CostumeChangeViewModel_Apply)(_this);
-	}
-
 	HOOK_DEF(void, CostumeChangeViewModel_RefreshViewModels)(void* _this) {
+		activeCostumeChangeViewModel = _this;
 		// called when entering costume change view
 		// discarding will make whole costume items/lists invisible
 		printf("CostumeChangeViewModel_RefreshViewModels\n");

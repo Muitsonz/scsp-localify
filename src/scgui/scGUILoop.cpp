@@ -999,5 +999,14 @@ namespace SCGUILoop {
 			ShowMessageBox("ok");
 		}
 #endif
+		if (ImGui::Button("CostumeChangeViewModel.Apply")) {
+			if (!reflection::UnityObject_op_Implicit((Il2CppObject*)activeCostumeChangeViewModel)) {
+				std::cout << "No active instance." << std::endl;
+			}
+			else {
+				CostumeChangeViewModel_Apply_hook(activeCostumeChangeViewModel);
+				std::cout << "applied." << std::endl;
+			}
+		}
 	}
 }

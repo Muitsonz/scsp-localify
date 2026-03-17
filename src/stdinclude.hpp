@@ -416,3 +416,7 @@ namespace tools {
 	extern void AddNetworkingHooks();
 	extern void BuildCallingRelations();
 }
+
+
+extern void* activeCostumeChangeViewModel;
+extern void CostumeChangeViewModel_Apply_hook(void* _this);

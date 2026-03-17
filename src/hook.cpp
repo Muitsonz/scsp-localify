@@ -219,9 +219,9 @@ void AddSafetyHook(const char* orig_name, void* orig, void* hook, SafetyHookInli
 	printf(_fmt_##" (%s, %s)\n", _name_##_offset, MH_StatusToString(_name_##stat1), MH_StatusToString(_name_##stat2))
 #endif
 #define ADD_HOOK_1(_name_) ADD_HOOK(_name_, #_name_##" at %p")
-#define ADD_HOOK_ADDR(_name_, _str_assembly_, _str_namespace_, _str_class_, _str_method_, _val_param_count_) \
-	auto _name_##_addr = il2cpp_symbols_logged::get_method_pointer(_str_assembly_, _str_namespace_, _str_class_, _str_method_, _val_param_count_); \
-	ADD_HOOK_1(_name_);
+#define ADD_HOOK_ADDR(_raw_assembly_, _raw_namespace_, _raw_class_, _raw_method_, _val_param_count_) \
+	auto _raw_class_##_##_raw_method_##_addr = il2cpp_symbols_logged::get_method_pointer(#_raw_assembly_, #_raw_namespace_, #_raw_class_, #_raw_method_, _val_param_count_); \
+	ADD_HOOK_1(_raw_class_##_##_raw_method_);
 #pragma endregion
 
 bool exd = false;
@@ -2945,6 +2945,27 @@ namespace
 	}
 
 
+	HOOK_DEF(void, CostumeChangeViewModel_Apply)(void* _this) {
+		// called to save state;
+		// for dressorder, it's called each selection; for pre-MV, it's called when clicking Confirm
+		printf("CostumeChangeViewModel_Apply\n");
+		HOOK_CAST_CALL(void, CostumeChangeViewModel_Apply)(_this);
+	}
+
+	HOOK_DEF(void, CostumeChangeViewModel_RefreshViewModels)(void* _this) {
+		// called when entering costume change view
+		// discarding will make whole costume items/lists invisible
+		printf("CostumeChangeViewModel_RefreshViewModels\n");
+		HOOK_CAST_CALL(void, CostumeChangeViewModel_RefreshViewModels)(_this);
+	}
+
+	HOOK_DEF(void, CostumeChangeViewModel_ModifyPreview)(void* _this, void* action) {
+		// called when costume changing (updating the model)
+		printf("CostumeChangeViewModel_ModifyPreview\n");
+		HOOK_CAST_CALL(void, CostumeChangeViewModel_ModifyPreview)(_this, action);
+	}
+
+
 	void readDMMGameGuardData();
 
 	HOOK_ORIG_TYPE GGIregualDetector_ShowPopup_orig;
@@ -3544,6 +3565,11 @@ namespace
 		//ADD_HOOK_1(BodyParamFloatProperty__ctor);
 		//ADD_HOOK_1(BodyParamFloatProperty__getValue);
 		ADD_HOOK_1(MagicaClothController_Awake);
+
+		ADD_HOOK_ADDR(PRISM.Adapters.dll, PRISM.Adapters.CostumeChange, CostumeChangeViewModel, Apply, 0);
+		ADD_HOOK_ADDR(PRISM.Adapters.dll, PRISM.Adapters.CostumeChange, CostumeChangeViewModel, RefreshViewModels, 0);
+		ADD_HOOK_ADDR(PRISM.Adapters.dll, PRISM.Adapters.CostumeChange, CostumeChangeViewModel, ModifyPreview, 1);
+
 
 		tools::AddNetworkingHooks();
 

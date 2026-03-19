@@ -373,6 +373,7 @@ extern bool g_unlock_all_headwear;
 extern bool g_show_hidden_costumes;
 extern bool g_save_and_replace_costume_changes;
 extern bool g_overrie_mv_unit_idols;
+extern bool g_apply_costumes_automatically;
 extern bool g_override_isVocalSeparatedOn;
 extern bool g_enable_chara_param_edit;
 extern float g_font_size_offset;

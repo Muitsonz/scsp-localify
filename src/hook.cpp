@@ -219,9 +219,9 @@ void AddSafetyHook(const char* orig_name, void* orig, void* hook, SafetyHookInli
 	printf(_fmt_##" (%s, %s)\n", _name_##_offset, MH_StatusToString(_name_##stat1), MH_StatusToString(_name_##stat2))
 #endif
 #define ADD_HOOK_1(_name_) ADD_HOOK(_name_, #_name_##" at %p")
-#define ADD_HOOK_ADDR(_name_, _str_assembly_, _str_namespace_, _str_class_, _str_method_, _val_param_count_) \
-	auto _name_##_addr = il2cpp_symbols_logged::get_method_pointer(_str_assembly_, _str_namespace_, _str_class_, _str_method_, _val_param_count_); \
-	ADD_HOOK_1(_name_);
+#define ADD_HOOK_ADDR(_raw_assembly_, _raw_namespace_, _raw_class_, _raw_method_, _val_param_count_) \
+	auto _raw_class_##_##_raw_method_##_addr = il2cpp_symbols_logged::get_method_pointer(#_raw_assembly_, #_raw_namespace_, #_raw_class_, #_raw_method_, _val_param_count_); \
+	ADD_HOOK_1(_raw_class_##_##_raw_method_);
 #pragma endregion
 
 bool exd = false;
@@ -2122,15 +2122,6 @@ namespace
 #endif
 
 
-	HOOK_ORIG_TYPE CostumeChangeViewModel_ctor_orig;
-	void CostumeChangeViewModel_ctor_hook(Il2CppObject* _this, Il2CppObject* parameter, int characterId, void* settingCostumeSet, bool isAllDressOrdered, void* defaultCostumeSet) {
-		if (g_show_hidden_costumes) {
-			isAllDressOrdered = true;
-		}
-		return HOOK_CAST_CALL(void, CostumeChangeViewModel_ctor)(_this, parameter, characterId, settingCostumeSet, isAllDressOrdered, defaultCostumeSet);
-	}
-
-
 	void ModifyOnStageIdols(void* onStageIdols) {
 		__try {
 			auto idolsLength = il2cpp_array_length(onStageIdols);
@@ -2471,75 +2462,75 @@ namespace
 		return HOOK_CAST_CALL(void*, MvUnitSlotGenerator_NewMvUnitSlot)(slot, idol, method);
 	}
 
-	bool checkMusicDataSatisfy(void* _this, void* unit, int pos = -1) {
-		static auto musicData_klass = il2cpp_symbols_logged::get_class("PRISM.Legacy.dll", "PRISM.Live", "MusicData");
-		static auto master_klass = il2cpp_symbols_logged::get_class("PRISM.Definitions.dll", "PRISM.Definitions", "MstSong");
-
-		static auto masterData_field = il2cpp_symbols_logged::il2cpp_class_get_field_from_name(musicData_klass, "<Master>k__BackingField");
-		static auto isSongParts_field = il2cpp_symbols_logged::il2cpp_class_get_field_from_name(master_klass, "<IsSongParts>k__BackingField");
-
-		const auto masterData = il2cpp_symbols::read_field(_this, masterData_field);
-		const auto isSongParts = il2cpp_symbols::read_field<bool>(masterData, isSongParts_field);
-		if (!isSongParts) return false;
-
-		static auto klass_LiveUnit = il2cpp_symbols::get_class_from_instance(unit);
-		static auto mtd_LiveUnit_get_Idols = il2cpp_class_get_method_from_name(klass_LiveUnit, "get_Idols", 0);
-		static auto func_LiveUnit_get_Idols = reinterpret_cast<void* (*)(void*, MethodInfo*)>(mtd_LiveUnit_get_Idols->methodPointer);
-
-		static auto MusicData_IsOriginalMember = reinterpret_cast<bool (*)(void*, int)>(
-			il2cpp_symbols_logged::get_method_pointer("PRISM.Legacy.dll", "PRISM.Live", "MusicData", "IsOriginalMember", 1)
-			);
-
-		auto idols = func_LiveUnit_get_Idols(unit, mtd_LiveUnit_get_Idols);
-		bool ret = true;
-		int currentSlot = 0;
-		il2cpp_symbols::iterate_IEnumerable(idols, [&](void* idol) {
-			__try {
-				const auto idol_klass = il2cpp_symbols::get_class_from_instance(idol);
-				const auto characterId_field = il2cpp_class_get_field_from_name(idol_klass, "<CharacterId>k__BackingField");
-				//const auto characterId = il2cpp_symbols::read_field<int>(idol, characterId_field);
-				const auto get_CharacterId = reinterpret_cast<int (*)(void*)>(
-					il2cpp_symbols::get_method_pointer("PRISM.Legacy.dll", "PRISM.Live", "LiveIdol", "get_CharacterId", 0)
-					);
-				const auto characterId = get_CharacterId(idol);
-				const auto isOrigMember = MusicData_IsOriginalMember(_this, characterId);
-				if (!isOrigMember) {
-					if (pos == -1) {
-						ret = false;
-					}
-					else {
-						if (currentSlot == pos) ret = false;
-					}
-				}
-				currentSlot++;
-			}
-			__except (seh_filter(GetExceptionInformation())) {
-				printf("SEH exception detected in `checkMusicDataSatisfy|iterate_IEnumerable`.\n");
-			}
-			});
-
-		return ret;
-	}
-
-	HOOK_ORIG_TYPE CheckVocalSeparatedSatisfy_orig;
-	bool CheckVocalSeparatedSatisfy_hook(void* _this, void* unit, void* mtd) {
-		if (!g_allow_same_idol) {
-			return HOOK_CAST_CALL(bool, CheckVocalSeparatedSatisfy)(
-				_this, unit, mtd);
-		}
-
-		return checkMusicDataSatisfy(_this, unit);
-	}
-
-	HOOK_ORIG_TYPE CheckLimitedVocalSeparatedSatisfy_2_orig;
-	bool CheckLimitedVocalSeparatedSatisfy_2_hook(void* _this, void* unit, int pos, void* mtd) {
-		if (!g_allow_same_idol) {
-			return HOOK_CAST_CALL(bool, CheckLimitedVocalSeparatedSatisfy_2)(
-				_this, unit, pos, mtd);
-		}
-		// printf("CheckLimitedVocalSeparatedSatisfy: %d\n", pos);
-		return checkMusicDataSatisfy(_this, unit, pos);
-	}
+	//bool checkMusicDataSatisfy(void* _this, void* unit, int pos = -1) {
+	//	static auto musicData_klass = il2cpp_symbols_logged::get_class("PRISM.Legacy.dll", "PRISM.Live", "MusicData");
+	//	static auto master_klass = il2cpp_symbols_logged::get_class("PRISM.Definitions.dll", "PRISM.Definitions", "MstSong");
+	//
+	//	static auto masterData_field = il2cpp_symbols_logged::il2cpp_class_get_field_from_name(musicData_klass, "<Master>k__BackingField");
+	//	static auto isSongParts_field = il2cpp_symbols_logged::il2cpp_class_get_field_from_name(master_klass, "<IsSongParts>k__BackingField");
+	//
+	//	const auto masterData = il2cpp_symbols::read_field(_this, masterData_field);
+	//	const auto isSongParts = il2cpp_symbols::read_field<bool>(masterData, isSongParts_field);
+	//	if (!isSongParts) return false;
+	//
+	//	static auto klass_LiveUnit = il2cpp_symbols::get_class_from_instance(unit);
+	//	static auto mtd_LiveUnit_get_Idols = il2cpp_class_get_method_from_name(klass_LiveUnit, "get_Idols", 0);
+	//	static auto func_LiveUnit_get_Idols = reinterpret_cast<void* (*)(void*, MethodInfo*)>(mtd_LiveUnit_get_Idols->methodPointer);
+	//
+	//	static auto MusicData_IsOriginalMember = reinterpret_cast<bool (*)(void*, int)>(
+	//		il2cpp_symbols_logged::get_method_pointer("PRISM.Legacy.dll", "PRISM.Live", "MusicData", "IsOriginalMember", 1)
+	//		);
+	//
+	//	auto idols = func_LiveUnit_get_Idols(unit, mtd_LiveUnit_get_Idols);
+	//	bool ret = true;
+	//	int currentSlot = 0;
+	//	il2cpp_symbols::iterate_IEnumerable(idols, [&](void* idol) {
+	//		__try {
+	//			const auto idol_klass = il2cpp_symbols::get_class_from_instance(idol);
+	//			const auto characterId_field = il2cpp_class_get_field_from_name(idol_klass, "<CharacterId>k__BackingField");
+	//			//const auto characterId = il2cpp_symbols::read_field<int>(idol, characterId_field);
+	//			const auto get_CharacterId = reinterpret_cast<int (*)(void*)>(
+	//				il2cpp_symbols::get_method_pointer("PRISM.Legacy.dll", "PRISM.Live", "LiveIdol", "get_CharacterId", 0)
+	//				);
+	//			const auto characterId = get_CharacterId(idol);
+	//			const auto isOrigMember = MusicData_IsOriginalMember(_this, characterId);
+	//			if (!isOrigMember) {
+	//				if (pos == -1) {
+	//					ret = false;
+	//				}
+	//				else {
+	//					if (currentSlot == pos) ret = false;
+	//				}
+	//			}
+	//			currentSlot++;
+	//		}
+	//		__except (seh_filter(GetExceptionInformation())) {
+	//			printf("SEH exception detected in `checkMusicDataSatisfy|iterate_IEnumerable`.\n");
+	//		}
+	//		});
+	//
+	//	return ret;
+	//}
+	//
+	//HOOK_ORIG_TYPE CheckVocalSeparatedSatisfy_orig;
+	//bool CheckVocalSeparatedSatisfy_hook(void* _this, void* unit, void* mtd) {
+	//	if (!g_allow_same_idol) {
+	//		return HOOK_CAST_CALL(bool, CheckVocalSeparatedSatisfy)(
+	//			_this, unit, mtd);
+	//	}
+	//
+	//	return checkMusicDataSatisfy(_this, unit);
+	//}
+	//
+	//HOOK_ORIG_TYPE CheckLimitedVocalSeparatedSatisfy_2_orig;
+	//bool CheckLimitedVocalSeparatedSatisfy_2_hook(void* _this, void* unit, int pos, void* mtd) {
+	//	if (!g_allow_same_idol) {
+	//		return HOOK_CAST_CALL(bool, CheckLimitedVocalSeparatedSatisfy_2)(
+	//			_this, unit, pos, mtd);
+	//	}
+	//	// printf("CheckLimitedVocalSeparatedSatisfy: %d\n", pos);
+	//	return checkMusicDataSatisfy(_this, unit, pos);
+	//}
 
 	HOOK_ORIG_TYPE LiveMVUnitMemberChangePresenter_initializeAsync_b_4_MoveNext_orig;
 	void LiveMVUnitMemberChangePresenter_initializeAsync_b_4_MoveNext_hook(void* _this, MethodInfo* method) {
@@ -2942,6 +2933,54 @@ namespace
 		auto radius = method_get_Radius->Invoke<managed::MagicaCloth2::BodyParamFloatProperty*>(_this, {});
 		radius->MinValue = g_magicacloth_radius_min;
 		radius->MaxValue = g_magicacloth_radius_max;
+	}
+
+
+	void (*fp_CostumeChangeViewModel_Apply)(void* _this);
+
+	HOOK_DEF(void, CostumeChangeViewModel__ctor)(void* _this, void* parameter, int characterId, void* settingCostumeSet, bool isAllDressOrdered, void* defaultCostumeSet) {
+		if (g_show_hidden_costumes) {
+			isAllDressOrdered = true;
+		}
+		HOOK_CAST_CALL(void, CostumeChangeViewModel__ctor)(_this, parameter, characterId, settingCostumeSet, isAllDressOrdered, defaultCostumeSet);
+	}
+
+	HOOK_DEF(bool, CostumeChangeViewModel_CanDecide1)(void* _this, uint16_t nullableBool_overrideIsAllDressOrdered) {
+		return g_apply_costumes_automatically
+			? false
+			: HOOK_CAST_CALL(bool, CostumeChangeViewModel_CanDecide1)(_this, nullableBool_overrideIsAllDressOrdered);
+	}
+
+	HOOK_DEF(bool, CostumeChangeViewModel_CanDecide2)(void* _this, int partType, bool isAllDressOrdered) {
+		return g_apply_costumes_automatically
+			? false
+			: HOOK_CAST_CALL(bool, CostumeChangeViewModel_CanDecide2)(_this, partType, isAllDressOrdered);
+	}
+
+	HOOK_DEF(void, CostumeChangeViewModel_RefreshViewModels)(void* _this) {
+
+		auto method_GetPreviewUnitIdol = il2cpp_symbols_logged::get_method(
+			"PRISM.Adapters.dll", "PRISM.Adapters.CostumeChange",
+			"CostumeChangeViewModel", "GetPreviewUnitIdol", 0
+		);
+		auto previewUnitIdol = (managed::UnitIdol*)method_GetPreviewUnitIdol->Invoke((Il2CppObject*)_this, {});
+		UnitIdol idolData;
+		idolData.ReadFrom(previewUnitIdol);
+		auto it = savedCostumes.find(idolData.CharaId);
+		if (it != savedCostumes.end()) {
+			it->second.ApplyTo(previewUnitIdol);
+			std::cout << "CharaId " << it->first << " has been modified." << std::endl;
+		}
+
+		HOOK_CAST_CALL(void, CostumeChangeViewModel_RefreshViewModels)(_this);
+	}
+
+	HOOK_DEF(void, CostumeChangeViewModel_ModifyPreview)(void* _this, void* action) {
+		HOOK_CAST_CALL(void, CostumeChangeViewModel_ModifyPreview)(_this, action);
+		if (g_apply_costumes_automatically && fp_CostumeChangeViewModel_Apply) {
+			fp_CostumeChangeViewModel_Apply(_this);
+			printf("CostumeChangeViewModel.Apply();\n");
+		}
 	}
 
 
@@ -3348,14 +3387,14 @@ namespace
 			"MvUnitSlotGenerator", "NewMvUnitSlot", 2
 		);
 
-		auto CheckVocalSeparatedSatisfy_addr = il2cpp_symbols::get_method_pointer(
-			"PRISM.Legacy.dll", "PRISM.Live",
-			"MusicData", "CheckVocalSeparatedSatisfy", 1
-		);
-		auto CheckLimitedVocalSeparatedSatisfy_2_addr = il2cpp_symbols::get_method_pointer(
-			"PRISM.Legacy.dll", "PRISM.Live",
-			"MusicData", "CheckLimitedVocalSeparatedSatisfy", 2
-		);
+		//auto CheckVocalSeparatedSatisfy_addr = il2cpp_symbols::get_method_pointer(
+		//	"PRISM.Legacy.dll", "PRISM.Live",
+		//	"MusicData", "CheckVocalSeparatedSatisfy", 1
+		//);
+		//auto CheckLimitedVocalSeparatedSatisfy_2_addr = il2cpp_symbols::get_method_pointer(
+		//	"PRISM.Legacy.dll", "PRISM.Live",
+		//	"MusicData", "CheckLimitedVocalSeparatedSatisfy", 2
+		//);
 
 		auto CriWareErrorHandler_HandleMessage_addr = il2cpp_symbols::get_method_pointer(
 			"CriMw.CriWare.Runtime.dll", "CriWare",
@@ -3472,6 +3511,26 @@ namespace
 			"MagicaClothController", "Awake", 0
 		);
 
+		auto CostumeChangeViewModel_Apply_addr = il2cpp_symbols_logged::get_method_pointer(
+			"PRISM.Adapters.dll", "PRISM.Adapters.CostumeChange", "CostumeChangeViewModel", "Apply", 0
+		);
+		fp_CostumeChangeViewModel_Apply = reinterpret_cast<void(*)(void*)>(CostumeChangeViewModel_Apply_addr);
+
+		auto CostumeChangeViewModel__ctor_addr = il2cpp_symbols_logged::get_method_pointer(
+			"PRISM.Adapters.dll", "PRISM.Adapters.CostumeChange",
+			"CostumeChangeViewModel", ".ctor", 5
+		);
+
+		auto CostumeChangeViewModel_CanDecide1_addr = il2cpp_symbols_logged::get_method_pointer(
+			"PRISM.Adapters.dll", "PRISM.Adapters.CostumeChange",
+			"CostumeChangeViewModel", "CanDecide", 1
+		);
+
+		auto CostumeChangeViewModel_CanDecide2_addr = il2cpp_symbols_logged::get_method_pointer(
+			"PRISM.Adapters.dll", "PRISM.Adapters.CostumeChange",
+			"CostumeChangeViewModel", "CanDecide", 2
+		);
+
 #pragma endregion
 		ADD_HOOK(SetResolution, "SetResolution at %p");
 		ADD_HOOK_1(StoryExtensions_IsLocked);
@@ -3521,8 +3580,8 @@ namespace
 		ADD_HOOK(LiveMVUnit_GetMemberChangeRequestData, "LiveMVUnit_GetMemberChangeRequestData at %p");
 		ADD_HOOK(LiveMVUnitMemberChangePresenter_initializeAsync_b_4_MoveNext, "LiveMVUnitMemberChangePresenter_initializeAsync_b_4_MoveNext at %p");
 		ADD_HOOK(MvUnitSlotGenerator_NewMvUnitSlot, "MvUnitSlotGenerator_NewMvUnitSlot at %p");
-		ADD_HOOK(CheckVocalSeparatedSatisfy, "CheckVocalSeparatedSatisfy at %p");
-		ADD_HOOK(CheckLimitedVocalSeparatedSatisfy_2, "CheckLimitedVocalSeparatedSatisfy_2 at %p");
+		//ADD_HOOK(CheckVocalSeparatedSatisfy, "CheckVocalSeparatedSatisfy at %p");
+		//ADD_HOOK(CheckLimitedVocalSeparatedSatisfy_2, "CheckLimitedVocalSeparatedSatisfy_2 at %p");
 		ADD_HOOK(CriWareErrorHandler_HandleMessage, "CriWareErrorHandler_HandleMessage at %p");
 		ADD_HOOK(GGIregualDetector_ShowPopup, "GGIregualDetector_ShowPopup at %p");
 		ADD_HOOK(DMMGameGuard_NPGameMonCallback, "DMMGameGuard_NPGameMonCallback at %p");
@@ -3532,7 +3591,6 @@ namespace
 		ADD_HOOK(set_vsync_count, "set_vsync_count at %p");
 		ADD_HOOK(Unity_Quit, "Unity_Quit at %p");
 
-		ADD_HOOK(CostumeChangeViewModel_ctor, "CostumeChangeViewModel_ctor at %p");
 		ADD_HOOK(LiveMVStartData_ctor, "LiveMVStartData_ctor at %p");
 		ADD_HOOK_1(RunwayEventStartData_ctor);
 
@@ -3544,6 +3602,12 @@ namespace
 		//ADD_HOOK_1(BodyParamFloatProperty__ctor);
 		//ADD_HOOK_1(BodyParamFloatProperty__getValue);
 		ADD_HOOK_1(MagicaClothController_Awake);
+
+		ADD_HOOK_1(CostumeChangeViewModel__ctor);
+		ADD_HOOK_1(CostumeChangeViewModel_CanDecide1);
+		ADD_HOOK_1(CostumeChangeViewModel_CanDecide2);
+		ADD_HOOK_ADDR(PRISM.Adapters.dll, PRISM.Adapters.CostumeChange, CostumeChangeViewModel, RefreshViewModels, 0);
+		ADD_HOOK_ADDR(PRISM.Adapters.dll, PRISM.Adapters.CostumeChange, CostumeChangeViewModel, ModifyPreview, 1);
 
 		tools::AddNetworkingHooks();
 

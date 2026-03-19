@@ -453,6 +453,10 @@ namespace SCGUILoop {
 			ImGui::SameLine();
 			HELP_TOOLTIP("(?)", "在进入换装窗口前勾选有效。\nActive only when checked before entering costume changing view.");
 
+			ImGui::Checkbox("Apply costume changes automatically", &g_apply_costumes_automatically);
+			ImGui::SameLine();
+			HELP_TOOLTIP("(?)", "勾选后将自动应用所选服装（如用于Photo Studio），为安全起见将禁止确认所选服装。\nSelected costumes will be applied automatically (like in Photo Studio), and Confirm button will be banned for safety reason.");
+
 			ImGui::Checkbox("Enable VocalSeparatedOn forcibly", &g_override_isVocalSeparatedOn);
 			ImGui::SameLine();
 			HELP_TOOLTIP("(?)", "若最终播放MV时的歌曲或所选角色不支持分段演唱则会导致卡死或崩溃。\nGame will freeze or crash if finally selected song or idols don't support separated vocal.");

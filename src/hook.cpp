@@ -2160,11 +2160,11 @@ namespace
 	}
 
 	HOOK_ORIG_TYPE LiveMVStartData_ctor_orig;
-	void LiveMVStartData_ctor_hook(void* _this, void* mvStage, void* sceneName, void* onStageIdols, void* cameraworkConfig, int vocalSeparatedMode, int renderingDynamicRange, int soundEffectMode, bool isSortIdols) {
+	void LiveMVStartData_ctor_hook(void* _this, void* mvStage, void* sceneName, void* onStageIdols, void* cameraworkConfig, int vocalSeparatedMode, int vocalSeparatedSoloIndex, int renderingDynamicRange, int soundEffectMode, bool isSortIdols) {
 		if (g_override_isVocalSeparatedOn) {
 			vocalSeparatedMode = 1;
 		}
-		HOOK_CAST_CALL(void*, LiveMVStartData_ctor)(_this, mvStage, sceneName, onStageIdols, cameraworkConfig, vocalSeparatedMode, renderingDynamicRange, soundEffectMode, isSortIdols);
+		HOOK_CAST_CALL(void*, LiveMVStartData_ctor)(_this, mvStage, sceneName, onStageIdols, cameraworkConfig, vocalSeparatedMode, vocalSeparatedSoloIndex, renderingDynamicRange, soundEffectMode, isSortIdols);
 		ModifyOnStageIdols(onStageIdols);
 	}
 
@@ -3466,7 +3466,7 @@ namespace
 
 		auto LiveMVStartData_ctor_addr = il2cpp_symbols::get_method_pointer(
 			"PRISM.Legacy", "PRISM.Live",
-			"LiveMVStartData", ".ctor", 8
+			"LiveMVStartData", ".ctor", 9
 		);
 
 		auto RunwayEventStartData_ctor_addr = il2cpp_symbols_logged::get_method_pointer(

@@ -14,6 +14,8 @@
 #include <rapidjson/writer.h>
 #include <rapidjson/filewritestream.h>
 
+#include "tools/unsafe.hpp"
+
 //using namespace std;
 
 std::function<void()> g_on_hook_ready;
@@ -935,6 +937,28 @@ namespace
 			printf("[INFO] Shader data won't be saved for a quick probing.\n");
 		}
 	}
+	bool DetectShaderTextureIdsUnsafe(const std::string& shaderName, Il2CppObject* material, std::vector<int>& propIds) {
+		bool isFirst = true;
+		for (auto id : propIds) {
+			if (!isFirst) std::cout << ", ";
+			std::cout << id;
+			isFirst = false;
+		}
+		std::cout << "}" << std::endl;
+
+		auto success = material_texture_ids_sim::enumerate_texture_property_name_ids_from_managed_material(
+			material, propIds
+		);
+
+		isFirst = true;
+		for (auto id : propIds) {
+			if (!isFirst) std::cout << ", ";
+			std::cout << id;
+			isFirst = false;
+		}
+		std::cout << "}" << std::endl;
+		return success;
+	}
 
 	bool TryLoadShaderData(const std::string& shaderName) {
 		auto filepath = g_localify_base / "shaders" / shaderName;
@@ -1173,7 +1197,13 @@ namespace
 				std::vector<int> propIds{};
 				uint32_t upper = g_shader_quickprobing ? 8192 : 0;
 				printf("Detecting shader '%s'... (%i)\n", shaderName.c_str(), upper);
-				DetectShaderTextureIds(shaderName, material, propIds, upper);
+				if (!(g_shader_unsafe_probing && DetectShaderTextureIdsUnsafe(shaderName, material, propIds))) {
+					if (g_shader_unsafe_probing) {
+						printf("Failed to probe unsafely. Fall back to normal probing...\n");
+						propIds.clear();
+					}
+					DetectShaderTextureIds(shaderName, material, propIds, upper);
+				}
 				shaderPropIds.emplace(shaderName, propIds);
 				it = shaderPropIds.find(shaderName);
 			}
@@ -2145,7 +2175,7 @@ namespace
 					printf("[WARNING]: `onStageIdols.Length` = %d, greater than expected `overridenMvUnitIdols_length`.\n", idolsLength);
 					loopMax = overridenMvUnitIdols_length;
 				}
-				for (int i = 0; i < idolsLength; ++i) {
+				for (int i = 0; i < loopMax; ++i) {
 					if (!overridenMvUnitIdols[i].IsEmpty()) {
 						auto item = (managed::UnitIdol*)il2cpp_symbols::array_get_value(onStageIdols, i);
 						overridenMvUnitIdols[i].ApplyTo(item);
@@ -2165,17 +2195,23 @@ namespace
 			vocalSeparatedMode = 1;
 		}
 		HOOK_CAST_CALL(void*, LiveMVStartData_ctor)(_this, mvStage, sceneName, onStageIdols, cameraworkConfig, vocalSeparatedMode, vocalSeparatedSoloIndex, renderingDynamicRange, soundEffectMode, isSortIdols);
-		ModifyOnStageIdols(onStageIdols);
 	}
 
-	HOOK_ORIG_TYPE RunwayEventStartData_ctor_orig;
-	void RunwayEventStartData_ctor_hook(void* _this, void* mvStage, void* onStageIdols, int soundEffectMode) {
+	void* GetLiveStartDataOnStageIdols(Il2CppObject* data) {
+		if (data == nullptr) return nullptr;
+		auto method_get_OnStageIdols = il2cpp_symbols_logged::get_method(
+			il2cpp_object_get_class(data), "get_OnStageIdols", 0
+		);
+		return method_get_OnStageIdols->Invoke(data, {});
+	}
+
+	HOOK_ORIG_TYPE LiveStartDataExtensions_PreLoadAsync_orig;
+	void* LiveStartDataExtensions_PreLoadAsync_hook(void* retstr, Il2CppObject* data, uint16_t usePortraitCameraworkRaw, const MethodInfo* method) {
+		auto onStageIdols = GetLiveStartDataOnStageIdols(data);
 		if (onStageIdols != nullptr) {
-			if (0 == strcmp("UnitIdolWithMstCostume[]", ((Il2CppObject*)onStageIdols)->klass->name)) {
-				ModifyOnStageIdols(onStageIdols);
-			}
+			ModifyOnStageIdols(onStageIdols);
 		}
-		HOOK_CAST_CALL(void, RunwayEventStartData_ctor)(_this, mvStage, onStageIdols, soundEffectMode);
+		return HOOK_CAST_CALL(void*, LiveStartDataExtensions_PreLoadAsync)(retstr, data, usePortraitCameraworkRaw, method);
 	}
 
 
@@ -2786,6 +2822,27 @@ namespace
 
 		return method_Subject_OnNext->methodPointer;
 	}
+
+	void ReadPreviewMstCostume(Il2CppObject* viewModel, UnitIdol& unitIdol) {
+		static auto method_get_PreviewCostumeSet = il2cpp_symbols_logged::get_method(
+			"PRISM.Adapters.dll", "PRISM.Adapters.CostumeChange",
+			"CostumeChangeViewModel", "get_PreviewCostumeSet", 0
+		);
+		static auto method_get_Costume = il2cpp_symbols_logged::get_method(
+			"PRISM.Legacy.dll", "PRISM.Domain",
+			"CostumeSetData", "get_Costume", 0
+		);
+
+		auto previewCostumeSet = method_get_PreviewCostumeSet->Invoke(viewModel, {});
+		auto costume = method_get_Costume->Invoke(previewCostumeSet, {});
+
+		auto method_get_MstCostumeId = il2cpp_symbols_logged::get_method(
+			il2cpp_object_get_class(costume), "get_MstCostumeId", 0
+		);
+		auto mstCostumeId = method_get_MstCostumeId->Invoke(costume, {})->unbox_value<int>();
+		unitIdol.MstCostumeId = mstCostumeId;
+	}
+
 	HOOK_ORIG_TYPE Subject_OnNext_orig;
 	void Subject_OnNext_hook(void* _this, void* value, void* mi) {
 		HOOK_CAST_CALL(void, Subject_OnNext)(_this, value, mi);
@@ -2807,6 +2864,10 @@ namespace
 
 				UnitIdol data;
 				data.ReadFrom(idol);
+				// `GetPreviewUnitIdol` only returns a base UnitIdol without MstCostume
+				// an extra call to fill `MstCostumeId` is required
+				ReadPreviewMstCostume((Il2CppObject*)value, data);
+
 				std::cout << "Saved UnitIdel = ";
 				data.Print(std::cout);
 
@@ -2922,17 +2983,19 @@ namespace
 			printf("MagicaClothController_Awake_hook\n");
 		}
 
-		static auto klass = il2cpp_symbols_logged::get_class("PRISM.Module.CustomMagicaCloth.dll", "PRISM.Module.CustomMagicaCloth", "MagicaClothController");
-		static auto method_get_Inertia = il2cpp_class_get_method_from_name(klass, "get_Inertia", 0);
-		auto method_get_Radius = il2cpp_class_get_method_from_name(klass, "get_Radius", 0);
+		if (g_magicacloth_override) {
+			static auto klass = il2cpp_symbols_logged::get_class("PRISM.Module.CustomMagicaCloth.dll", "PRISM.Module.CustomMagicaCloth", "MagicaClothController");
+			static auto method_get_Inertia = il2cpp_class_get_method_from_name(klass, "get_Inertia", 0);
+			auto method_get_Radius = il2cpp_class_get_method_from_name(klass, "get_Radius", 0);
 
-		auto inertia = method_get_Inertia->Invoke<managed::MagicaCloth2::BodyParamFloatProperty*>(_this, {});
-		inertia->MinValue = g_magicacloth_inertia_min;
-		inertia->MaxValue = g_magicacloth_inertia_max;
+			auto inertia = method_get_Inertia->Invoke<managed::MagicaCloth2::BodyParamFloatProperty*>(_this, {});
+			inertia->MinValue = g_magicacloth_inertia_min;
+			inertia->MaxValue = g_magicacloth_inertia_max;
 
-		auto radius = method_get_Radius->Invoke<managed::MagicaCloth2::BodyParamFloatProperty*>(_this, {});
-		radius->MinValue = g_magicacloth_radius_min;
-		radius->MaxValue = g_magicacloth_radius_max;
+			auto radius = method_get_Radius->Invoke<managed::MagicaCloth2::BodyParamFloatProperty*>(_this, {});
+			radius->MinValue = g_magicacloth_radius_min;
+			radius->MaxValue = g_magicacloth_radius_max;
+		}
 	}
 
 
@@ -3469,9 +3532,10 @@ namespace
 			"LiveMVStartData", ".ctor", 9
 		);
 
-		auto RunwayEventStartData_ctor_addr = il2cpp_symbols_logged::get_method_pointer(
-			"PRISM.Legacy", "PRISM.RunwayEvent",
-			"RunwayEventStartData", ".ctor", 3
+
+		auto LiveStartDataExtensions_PreLoadAsync_addr = il2cpp_symbols_logged::get_method_pointer(
+			"PRISM.Legacy.dll", "PRISM.Live",
+			"LiveStartDataExtensions", "PreLoadAsync", 2
 		);
 
 		auto Subject_OnNext_addr = GetSubject_OnNext_addr();
@@ -3592,7 +3656,7 @@ namespace
 		ADD_HOOK(Unity_Quit, "Unity_Quit at %p");
 
 		ADD_HOOK(LiveMVStartData_ctor, "LiveMVStartData_ctor at %p");
-		ADD_HOOK_1(RunwayEventStartData_ctor);
+		ADD_HOOK_1(LiveStartDataExtensions_PreLoadAsync);
 
 		ADD_HOOK_1(Subject_OnNext);
 		ADD_HOOK_1(MagicaCloth_BuildAndRun);

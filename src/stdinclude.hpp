@@ -6,6 +6,7 @@
 #include <shlobj.h>
 
 #include <cinttypes>
+#include <cstddef>
 
 #include <filesystem>
 #include <fstream>
@@ -247,11 +248,20 @@ struct UnitIdol {
 		}
 	}
 
+	// get the `MstCostume` FieldInfo if the given managed object contains such field; otherwise, returns nullptr
+	static FieldInfo* GetMstCostumeField(managed::UnitIdol* managed) {
+		return il2cpp_class_get_field_from_name(
+			il2cpp_symbols::get_class_from_instance(managed),
+			"<MstCostume>k__BackingField"
+		);
+	}
+
 	int CharaId = -1;
 	int ClothId = 0;
 	int HairId = 0;
 	int* AccessoryIds = nullptr;
 	int AccessoryIdsLength = 0;
+	int MstCostumeId = -1;
 
 	void ReadFrom(managed::UnitIdol* managed);
 	void ApplyTo(managed::UnitIdol* managed);
@@ -386,6 +396,7 @@ extern bool g_reenable_clipPlane;
 extern float g_nearClipPlane;
 extern float g_farClipPlane;
 extern bool g_shader_quickprobing;
+extern bool g_shader_unsafe_probing;
 extern bool g_loadasset_output;
 extern bool g_extract_asset;
 extern bool g_extract_asset_image;

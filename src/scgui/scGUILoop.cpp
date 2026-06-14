@@ -113,6 +113,7 @@ namespace SCGUILoop {
 		if (idol.CharaId >= 0) {
 			obj.AddMember("clothId", rapidjson::Value(idol.ClothId), allocator);
 			obj.AddMember("hairId", rapidjson::Value(idol.HairId), allocator);
+			obj.AddMember("mstCostumeId", rapidjson::Value(idol.MstCostumeId), allocator);
 
 			rapidjson::Value accessoryIds(rapidjson::kArrayType);
 			for (int i = 0; i < idol.AccessoryIdsLength; ++i) {
@@ -129,6 +130,7 @@ namespace SCGUILoop {
 		if (idol.CharaId >= 0) {
 			if (v.HasMember("clothId") && v["clothId"].IsInt()) idol.ClothId = v["clothId"].GetInt();
 			if (v.HasMember("hairId") && v["hairId"].IsInt()) idol.HairId = v["hairId"].GetInt();
+			if (v.HasMember("mstCostumeId") && v["mstCostumeId"].IsInt()) idol.MstCostumeId = v["mstCostumeId"].GetInt();
 			if (v.HasMember("accessoryIds") && v["accessoryIds"].IsArray()) {
 				const auto& arr = v["accessoryIds"].GetArray();
 				if ((idol.AccessoryIdsLength = arr.Size()) > 0) {
@@ -736,9 +738,11 @@ namespace SCGUILoop {
 			}
 
 			if (ImGui::CollapsingHeader("Assets", ImGuiTreeNodeFlags_DefaultOpen)) {
-				ImGui::Checkbox("Use quick probing for unknown shaders", &g_shader_quickprobing);
+				ImGui::Checkbox("Use unsafe probing for unknown shaders", &g_shader_unsafe_probing);
+				HELP_TOOLTIP("(?)", "对不认识的渲染程序使用unsafe实现迅速检查，但随游戏引擎版本更新有崩溃风险。\nUse unsafe probing for unknown shaders extream quickly, with crash risk after game engine updates.");
+				ImGui::Checkbox("Use quick probing for unknown shaders (when not unsafe)", &g_shader_quickprobing);
 				ImGui::SameLine();
-				HELP_TOOLTIP("(?)", "对不认识的渲染程序启用快速探测。\nUse quick probing for unknwon shaders. (quick upper: 8192)");
+				HELP_TOOLTIP("(?)", "（在非unsafe模式下）对不认识的渲染程序启用快速探测。\nUse quick probing for unknown shaders. (quick upper: 8192; only available in not unsafe mode)");
 				ImGui::Checkbox("Output asset names", &g_loadasset_output);
 				ImGui::SameLine();
 				HELP_TOOLTIP("(?)", "在资源加载时输出资源和资源包的名称。\nOutput assets' name and AssetBundle's name when loaded.");

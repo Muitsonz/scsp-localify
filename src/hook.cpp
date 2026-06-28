@@ -2164,7 +2164,7 @@ namespace
 
 					auto it = savedCostumes.find(idol.CharaId);
 					if (it != savedCostumes.end()) {
-						it->second.ApplyTo(item);
+						it->second.ApplyTo(item, true);
 						std::cout << "CharaId " << it->first << " has been modified." << std::endl;
 					}
 				}
@@ -2178,7 +2178,7 @@ namespace
 				for (int i = 0; i < loopMax; ++i) {
 					if (!overridenMvUnitIdols[i].IsEmpty()) {
 						auto item = (managed::UnitIdol*)il2cpp_symbols::array_get_value(onStageIdols, i);
-						overridenMvUnitIdols[i].ApplyTo(item);
+						overridenMvUnitIdols[i].ApplyTo(item, true);
 						printf("MV unit idol [%d] is overriden.\n", i);
 					}
 				}
@@ -2381,19 +2381,23 @@ namespace
 		checkCostumeListReply(_this, ret, "mstAccessoryId_");
 		return ret;
 	}
+#endif
 
 	HOOK_ORIG_TYPE LiveMVUnitConfirmationModel_ctor_orig;
 	void LiveMVUnitConfirmationModel_ctor_hook(void* _this, void* musicData, void* saveData, void* unitListReply, void* costumeService) {
-		confirmationingModel = true;
-		cacheDressMap.clear();
-		cacheHairMap.clear();
-		cacheAccessoryMap.clear();
-
+		MstCostumeSnapshot::ResetAllRecords();
 		HOOK_CAST_CALL(void, LiveMVUnitConfirmationModel_ctor)(_this, musicData, saveData, unitListReply, costumeService);
-		confirmationingModel = false;
 		return;
+
+		//confirmationingModel = true;
+		//cacheDressMap.clear();
+		//cacheHairMap.clear();
+		//cacheAccessoryMap.clear();
+		//
+		//HOOK_CAST_CALL(void, LiveMVUnitConfirmationModel_ctor)(_this, musicData, saveData, unitListReply, costumeService);
+		//confirmationingModel = false;
+		//return;
 	}
-#endif
 
 	void updateSwayStringPoint(void* _this) {
 		if (!g_enable_chara_param_edit) return;
@@ -2823,7 +2827,7 @@ namespace
 		return method_Subject_OnNext->methodPointer;
 	}
 
-	void ReadPreviewMstCostume(Il2CppObject* viewModel, UnitIdol& unitIdol) {
+	void ReadPreviewCostumeStatus(Il2CppObject* viewModel, UnitIdol& unitIdol) {
 		static auto method_get_PreviewCostumeSet = il2cpp_symbols_logged::get_method(
 			"PRISM.Adapters.dll", "PRISM.Adapters.CostumeChange",
 			"CostumeChangeViewModel", "get_PreviewCostumeSet", 0
@@ -2833,14 +2837,22 @@ namespace
 			"CostumeSetData", "get_Costume", 0
 		);
 
+		static auto klass_CostumeStatus = il2cpp_symbols_logged::get_class(
+			"PRISM.Module.Networking.dll", "PRISM.Module.Networking.Stub.Status", "CostumeStatus"
+		);
+		static auto method_get_MstCostumeId = il2cpp_symbols_logged::get_method(klass_CostumeStatus, "get_MstCostumeId", 0);
+		static auto method_get_MstCharacterInfoId = il2cpp_symbols_logged::get_method(klass_CostumeStatus, "get_MstCharacterInfoId", 0);
+		static auto method_get_CostumeType = il2cpp_symbols_logged::get_method(klass_CostumeStatus, "get_CostumeType", 0);
+		static auto method_get_ResourceId = il2cpp_symbols_logged::get_method(klass_CostumeStatus, "get_ResourceId", 0);
+
 		auto previewCostumeSet = method_get_PreviewCostumeSet->Invoke(viewModel, {});
 		auto costume = method_get_Costume->Invoke(previewCostumeSet, {});
 
-		auto method_get_MstCostumeId = il2cpp_symbols_logged::get_method(
-			il2cpp_object_get_class(costume), "get_MstCostumeId", 0
-		);
-		auto mstCostumeId = method_get_MstCostumeId->Invoke(costume, {})->unbox_value<int>();
-		unitIdol.MstCostumeId = mstCostumeId;
+		unitIdol.CostumeStatusLoaded = true;
+		unitIdol.CostumeMstCostumeId = method_get_MstCostumeId->Invoke(costume, {})->unbox_value<int>();
+		unitIdol.CostumeMstCharacterInfoId = method_get_MstCharacterInfoId->Invoke(costume, {})->unbox_value<int>();
+		unitIdol.CostumeType = method_get_CostumeType->Invoke(costume, {})->unbox_value<int>();
+		unitIdol.CostumeResourceId = method_get_ResourceId->Invoke(costume, {})->unbox_value<int>();
 	}
 
 	HOOK_ORIG_TYPE Subject_OnNext_orig;
@@ -2866,7 +2878,7 @@ namespace
 				data.ReadFrom(idol);
 				// `GetPreviewUnitIdol` only returns a base UnitIdol without MstCostume
 				// an extra call to fill `MstCostumeId` is required
-				ReadPreviewMstCostume((Il2CppObject*)value, data);
+				ReadPreviewCostumeStatus((Il2CppObject*)value, data);
 
 				std::cout << "Saved UnitIdel = ";
 				data.Print(std::cout);
@@ -3031,7 +3043,7 @@ namespace
 		idolData.ReadFrom(previewUnitIdol);
 		auto it = savedCostumes.find(idolData.CharaId);
 		if (it != savedCostumes.end()) {
-			it->second.ApplyTo(previewUnitIdol);
+			it->second.ApplyTo(previewUnitIdol, false);
 			std::cout << "CharaId " << it->first << " has been modified." << std::endl;
 		}
 
@@ -3639,7 +3651,7 @@ namespace
 		//ADD_HOOK(GetCostumeListReply_get_CostumeList, "GetCostumeListReply_get_CostumeList at %p");
 		//ADD_HOOK(GetCostumeListReply_get_HairstyleList, "GetCostumeListReply_get_HairstyleList at %p");
 		//ADD_HOOK(GetCostumeListReply_get_AccessoryList, "GetCostumeListReply_get_AccessoryList at %p");
-		//ADD_HOOK(LiveMVUnitConfirmationModel_ctor, "LiveMVUnitConfirmationModel_ctor at %p");
+		ADD_HOOK(LiveMVUnitConfirmationModel_ctor, "LiveMVUnitConfirmationModel_ctor at %p");
 		ADD_HOOK(SwayString_SetupPoint, "SwayString_SetupPoint at %p");
 		ADD_HOOK(LiveMVUnit_GetMemberChangeRequestData, "LiveMVUnit_GetMemberChangeRequestData at %p");
 		ADD_HOOK(LiveMVUnitMemberChangePresenter_initializeAsync_b_4_MoveNext, "LiveMVUnitMemberChangePresenter_initializeAsync_b_4_MoveNext at %p");

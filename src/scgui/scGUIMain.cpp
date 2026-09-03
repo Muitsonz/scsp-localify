@@ -1,12 +1,15 @@
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_win32.h"
 #include "imgui/imgui_impl_dx11.h"
+#include <cstdio>
 #include <d3d11.h>
+#include <dxgi1_6.h>
 #include <tchar.h>
 #include "stdinclude.hpp"
 #include "scgui/scGUILoop.hpp"
 
 #pragma comment(lib, "d3d11.lib")
+#pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "d3dcompiler.lib")
 
 // Data
@@ -48,6 +51,7 @@ namespace {
             printf("[GUI][Win32] %s: error=%lu (0x%08lX), message=\"%s\"\n", operation, error, error, message);
         else
             printf("[GUI][Win32] %s: error=%lu (0x%08lX), no system message available\n", operation, error, error);
+        fflush(stdout);
     }
 
     void PrintHResult(const char* operation, HRESULT result)
@@ -68,6 +72,7 @@ namespace {
             printf("[GUI][D3D11] %s: hr=0x%08lX, message=\"%s\"\n", operation, resultCode, message);
         else
             printf("[GUI][D3D11] %s: hr=0x%08lX, no system message available\n", operation, resultCode);
+        fflush(stdout);
     }
 }
 
@@ -349,7 +354,7 @@ void guimain()
     }
 
     // Initialize Direct3D
-    printf("[GUI][D3D11] CreateDeviceD3D begin: hwnd=%p, IsWindow=%d\n", static_cast<void*>(hwnd), ::IsWindow(hwnd));
+    printf("[GUI][D3D11] CreateDeviceD3D begin: windowValid=%d\n", ::IsWindow(hwnd));
     if (!CreateDeviceD3D(hwnd))
     {
         printf("[GUI][D3D11] CreateDeviceD3D returned false\n");
@@ -438,9 +443,9 @@ void guimain()
     printf("[GUI][ImGui] ImGui_ImplWin32_Init end: result=%d\n", win32BackendInitResult);
     if (!win32BackendInitResult)
         printf("[GUI][Path] original path continues after ImGui_ImplWin32_Init returned false\n");
-    printf("[GUI][ImGui] ImGui_ImplDX11_Init begin: device=%p, context=%p\n",
-        static_cast<void*>(g_pd3dDevice),
-        static_cast<void*>(g_pd3dDeviceContext));
+    printf("[GUI][ImGui] ImGui_ImplDX11_Init begin: deviceAvailable=%d, contextAvailable=%d\n",
+        g_pd3dDevice != NULL,
+        g_pd3dDeviceContext != NULL);
     const bool dx11BackendInitResult = ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
     printf("[GUI][ImGui] ImGui_ImplDX11_Init end: result=%d\n", dx11BackendInitResult);
     if (!dx11BackendInitResult)
@@ -545,7 +550,7 @@ void guimain()
 
 bool CreateDeviceD3D(HWND hWnd)
 {
-    printf("[GUI][D3D11] CreateDeviceD3D entered: hwnd=%p, IsWindow=%d\n", static_cast<void*>(hWnd), ::IsWindow(hWnd));
+    printf("[GUI][D3D11] CreateDeviceD3D entered: windowValid=%d\n", ::IsWindow(hWnd));
 
     // Setup swap chain
     DXGI_SWAP_CHAIN_DESC sd;
@@ -563,7 +568,7 @@ bool CreateDeviceD3D(HWND hWnd)
     sd.SampleDesc.Quality = 0;
     sd.Windowed = TRUE;
     sd.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
-    printf("[GUI][D3D11] swap chain descriptor prepared: bufferCount=%u, size=(%u,%u), format=%u, refreshRate=%u/%u, flags=0x%08X, usage=0x%08X, outputWindow=%p, sampleCount=%u, sampleQuality=%u, windowed=%d, swapEffect=%u\n",
+    printf("[GUI][D3D11] swap chain descriptor prepared: bufferCount=%u, size=(%u,%u), format=%u, refreshRate=%u/%u, flags=0x%08X, usage=0x%08X, outputWindowValid=%d, sampleCount=%u, sampleQuality=%u, windowed=%d, swapEffect=%u\n",
         sd.BufferCount,
         sd.BufferDesc.Width,
         sd.BufferDesc.Height,
@@ -572,7 +577,7 @@ bool CreateDeviceD3D(HWND hWnd)
         sd.BufferDesc.RefreshRate.Denominator,
         sd.Flags,
         sd.BufferUsage,
-        static_cast<void*>(sd.OutputWindow),
+        sd.OutputWindow != NULL,
         sd.SampleDesc.Count,
         sd.SampleDesc.Quality,
         sd.Windowed,
@@ -583,64 +588,208 @@ bool CreateDeviceD3D(HWND hWnd)
     printf("[GUI][D3D11] createDeviceFlags=0x%08X, debugLayer=%d\n",
         createDeviceFlags,
         (createDeviceFlags & D3D11_CREATE_DEVICE_DEBUG) != 0);
-    D3D_FEATURE_LEVEL featureLevel;
+    D3D_FEATURE_LEVEL featureLevel = D3D_FEATURE_LEVEL_10_0;
     const D3D_FEATURE_LEVEL featureLevelArray[2] = { D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_0, };
     printf("[GUI][D3D11] requested feature levels: 0x%04X, 0x%04X\n",
         static_cast<unsigned int>(featureLevelArray[0]),
         static_cast<unsigned int>(featureLevelArray[1]));
 
-    printf("[GUI][D3D11] HARDWARE D3D11CreateDeviceAndSwapChain begin\n");
-    HRESULT res = D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, createDeviceFlags, featureLevelArray, 2, D3D11_SDK_VERSION, &sd, &g_pSwapChain, &g_pd3dDevice, &featureLevel, &g_pd3dDeviceContext);
-    PrintHResult("HARDWARE D3D11CreateDeviceAndSwapChain end", res);
-    printf("[GUI][D3D11] HARDWARE outputs: swapChain=%p, device=%p, context=%p",
-        static_cast<void*>(g_pSwapChain),
-        static_cast<void*>(g_pd3dDevice),
-        static_cast<void*>(g_pd3dDeviceContext));
-    if (SUCCEEDED(res))
-        printf(", featureLevel=0x%04X\n", static_cast<unsigned int>(featureLevel));
-    else
-        printf(", featureLevel unavailable\n");
+    HRESULT res = E_FAIL;
+    bool deviceCreated = false;
+    HRESULT lastHardwareResult = E_FAIL;
+    HRESULT warpResult = E_FAIL;
+    UINT adapterCandidatesEnumerated = 0;
+    UINT adapterAttempts = 0;
+    bool warpAttempted = false;
+    const char* adapterEnumerationMode = "not-started";
 
-    if (res == DXGI_ERROR_UNSUPPORTED) { // Try high-performance WARP software driver if hardware is not available.
-        printf("[GUI][D3D11] WARP fallback entered because HARDWARE returned DXGI_ERROR_UNSUPPORTED\n");
+    // Do not rely on the default adapter. On hybrid/multi-GPU systems the default
+    // adapter can be an integrated GPU even when the game is running on a discrete GPU.
+    IDXGIFactory1* dxgiFactory = NULL;
+    const HRESULT factoryResult = ::CreateDXGIFactory1(IID_PPV_ARGS(&dxgiFactory));
+    PrintHResult("CreateDXGIFactory1 end", factoryResult);
+
+    if (SUCCEEDED(factoryResult)) {
+        adapterEnumerationMode = "generic";
+        auto tryHardwareAdapter = [&](IDXGIAdapter1* adapter, UINT candidateIndex) {
+            ++adapterAttempts;
+            printf("[GUI][D3D11] hardware attempt=%u, high-performance adapter candidate=%u\n", adapterAttempts, candidateIndex);
+            printf("[GUI][D3D11] HARDWARE(adapter) D3D11CreateDeviceAndSwapChain begin\n");
+
+            // When pAdapter is non-NULL, D3D11 requires D3D_DRIVER_TYPE_UNKNOWN.
+            res = D3D11CreateDeviceAndSwapChain(
+                adapter,
+                D3D_DRIVER_TYPE_UNKNOWN,
+                NULL,
+                createDeviceFlags,
+                featureLevelArray,
+                2,
+                D3D11_SDK_VERSION,
+                &sd,
+                &g_pSwapChain,
+                &g_pd3dDevice,
+                &featureLevel,
+                &g_pd3dDeviceContext);
+            lastHardwareResult = res;
+            PrintHResult("HARDWARE(adapter) D3D11CreateDeviceAndSwapChain end", res);
+            printf("[GUI][D3D11] HARDWARE(adapter) outputs: swapChainCreated=%d, deviceCreated=%d, contextCreated=%d",
+                g_pSwapChain != NULL,
+                g_pd3dDevice != NULL,
+                g_pd3dDeviceContext != NULL);
+            if (SUCCEEDED(res))
+                printf(", featureLevel=0x%04X\n", static_cast<unsigned int>(featureLevel));
+            else
+                printf(", featureLevel unavailable\n");
+
+            if (SUCCEEDED(res))
+                return true;
+
+            // Be defensive in case a driver returned any partial COM outputs.
+            CleanupDeviceD3D();
+            return false;
+        };
+
+        // Ask DXGI for high-performance ordering without reading or printing
+        // adapter names, memory sizes, vendor IDs, or other device descriptors.
+        IDXGIFactory6* dxgiFactory6 = NULL;
+        const HRESULT preferenceFactoryResult = dxgiFactory->QueryInterface(IID_PPV_ARGS(&dxgiFactory6));
+        PrintHResult("IDXGIFactory6::QueryInterface end", preferenceFactoryResult);
+
+        if (SUCCEEDED(preferenceFactoryResult)) {
+            adapterEnumerationMode = "high-performance";
+            for (UINT adapterIndex = 0;; ++adapterIndex) {
+                IDXGIAdapter1* adapter = NULL;
+                const HRESULT enumResult = dxgiFactory6->EnumAdapterByGpuPreference(
+                    adapterIndex,
+                    DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,
+                    IID_PPV_ARGS(&adapter));
+                if (enumResult == DXGI_ERROR_NOT_FOUND) {
+                    printf("[GUI][D3D11] high-performance adapter enumeration ended: candidates=%u\n", adapterCandidatesEnumerated);
+                    break;
+                }
+                if (FAILED(enumResult)) {
+                    PrintHResult("IDXGIFactory6::EnumAdapterByGpuPreference failed", enumResult);
+                    break;
+                }
+
+                ++adapterCandidatesEnumerated;
+                printf("[GUI][D3D11] high-performance adapter candidate enumerated: ordinal=%u\n", adapterIndex);
+                const bool adapterSucceeded = tryHardwareAdapter(adapter, adapterIndex);
+                adapter->Release();
+                if (adapterSucceeded) {
+                    deviceCreated = true;
+                    break;
+                }
+            }
+            dxgiFactory6->Release();
+        }
+        else {
+            // Compatibility path for systems without IDXGIFactory6.
+            printf("[GUI][D3D11] high-performance adapter ordering unavailable; using generic adapter enumeration\n");
+            for (UINT adapterIndex = 0;; ++adapterIndex) {
+                IDXGIAdapter1* adapter = NULL;
+                const HRESULT enumResult = dxgiFactory->EnumAdapters1(adapterIndex, &adapter);
+                if (enumResult == DXGI_ERROR_NOT_FOUND) {
+                    printf("[GUI][D3D11] generic adapter enumeration ended: candidates=%u\n", adapterCandidatesEnumerated);
+                    break;
+                }
+                if (FAILED(enumResult)) {
+                    PrintHResult("IDXGIFactory1::EnumAdapters1 failed", enumResult);
+                    break;
+                }
+
+                ++adapterCandidatesEnumerated;
+                printf("[GUI][D3D11] generic adapter candidate enumerated: ordinal=%u\n", adapterIndex);
+                const bool adapterSucceeded = tryHardwareAdapter(adapter, adapterIndex);
+                adapter->Release();
+                if (adapterSucceeded) {
+                    deviceCreated = true;
+                    break;
+                }
+            }
+        }
+
+        printf("[GUI][D3D11] hardware adapter phase completed: mode=%s, candidates=%u, attempts=%u, success=%d\n",
+            adapterEnumerationMode,
+            adapterCandidatesEnumerated,
+            adapterAttempts,
+            deviceCreated);
+        dxgiFactory->Release();
+        dxgiFactory = NULL;
+    }
+    else {
+        printf("[GUI][D3D11] hardware adapter phase skipped because DXGI factory creation failed\n");
+    }
+
+    if (!deviceCreated) {
+        warpAttempted = true;
+        printf("[GUI][D3D11] WARP fallback entered because no hardware adapter succeeded\n");
         printf("[GUI][D3D11] WARP D3D11CreateDeviceAndSwapChain begin\n");
-        res = D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_WARP, NULL, createDeviceFlags, featureLevelArray, 2, D3D11_SDK_VERSION, &sd, &g_pSwapChain, &g_pd3dDevice, &featureLevel, &g_pd3dDeviceContext);
+        res = D3D11CreateDeviceAndSwapChain(
+            NULL,
+            D3D_DRIVER_TYPE_WARP,
+            NULL,
+            createDeviceFlags,
+            featureLevelArray,
+            2,
+            D3D11_SDK_VERSION,
+            &sd,
+            &g_pSwapChain,
+            &g_pd3dDevice,
+            &featureLevel,
+            &g_pd3dDeviceContext);
+        warpResult = res;
         PrintHResult("WARP D3D11CreateDeviceAndSwapChain end", res);
-        printf("[GUI][D3D11] WARP outputs: swapChain=%p, device=%p, context=%p",
-            static_cast<void*>(g_pSwapChain),
-            static_cast<void*>(g_pd3dDevice),
-            static_cast<void*>(g_pd3dDeviceContext));
+        printf("[GUI][D3D11] WARP outputs: swapChainCreated=%d, deviceCreated=%d, contextCreated=%d",
+            g_pSwapChain != NULL,
+            g_pd3dDevice != NULL,
+            g_pd3dDeviceContext != NULL);
         if (SUCCEEDED(res))
             printf(", featureLevel=0x%04X\n", static_cast<unsigned int>(featureLevel));
         else
             printf(", featureLevel unavailable\n");
-    }
-    else {
-        printf("[GUI][D3D11] WARP fallback skipped: HARDWARE hr=0x%08lX, required hr=0x%08lX\n",
-            static_cast<DWORD>(res),
-            static_cast<DWORD>(DXGI_ERROR_UNSUPPORTED));
+        deviceCreated = SUCCEEDED(res);
     }
 
-    if (res != S_OK)
+    printf("[GUI][D3D11] device phase summary: factoryHr=0x%08lX, adapterMode=%s, candidates=%u, attempts=%u, hardwareSucceeded=%d, lastHardwareHr=0x%08lX, warpAttempted=%d, warpHr=0x%08lX, result=%s\n",
+        static_cast<DWORD>(factoryResult),
+        adapterEnumerationMode,
+        adapterCandidatesEnumerated,
+        adapterAttempts,
+        SUCCEEDED(lastHardwareResult),
+        static_cast<DWORD>(lastHardwareResult),
+        warpAttempted,
+        static_cast<DWORD>(warpResult),
+        deviceCreated ? "success" : "failure");
+    fflush(stdout);
+
+    if (!deviceCreated)
     {
-        printf("[GUI][D3D11] device/swap chain initialization failed after existing fallback logic\n");
+        printf("[GUI][D3D11] device/swap chain initialization failed after hardware adapter enumeration and WARP fallback\n");
+        fflush(stdout);
         return false;
     }
 
     printf("[GUI][D3D11] CreateRenderTarget begin\n");
     CreateRenderTarget();
-    printf("[GUI][D3D11] CreateRenderTarget end: renderTargetView=%p\n", static_cast<void*>(g_mainRenderTargetView));
+    printf("[GUI][D3D11] CreateRenderTarget end: renderTargetViewCreated=%d\n", g_mainRenderTargetView != NULL);
+    if (g_mainRenderTargetView == NULL) {
+        printf("[GUI][D3D11] initialization failed during render-target phase: renderTargetViewCreated=0\n");
+        CleanupDeviceD3D();
+        fflush(stdout);
+        return false;
+    }
     printf("[GUI][D3D11] CreateDeviceD3D completed successfully\n");
     return true;
 }
 
 void CleanupDeviceD3D()
 {
-    printf("[GUI][D3D11] CleanupDeviceD3D begin: swapChain=%p, device=%p, context=%p, renderTargetView=%p\n",
-        static_cast<void*>(g_pSwapChain),
-        static_cast<void*>(g_pd3dDevice),
-        static_cast<void*>(g_pd3dDeviceContext),
-        static_cast<void*>(g_mainRenderTargetView));
+    printf("[GUI][D3D11] CleanupDeviceD3D begin: swapChainPresent=%d, devicePresent=%d, contextPresent=%d, renderTargetViewPresent=%d\n",
+        g_pSwapChain != NULL,
+        g_pd3dDevice != NULL,
+        g_pd3dDeviceContext != NULL,
+        g_mainRenderTargetView != NULL);
     CleanupRenderTarget();
     if (g_pSwapChain) {
         printf("[GUI][D3D11] swap chain Release branch entered\n");
@@ -674,30 +823,34 @@ void CleanupDeviceD3D()
 
 void CreateRenderTarget()
 {
-    ID3D11Texture2D* pBackBuffer;
+    ID3D11Texture2D* pBackBuffer = NULL;
     printf("[GUI][D3D11] IDXGISwapChain::GetBuffer begin\n");
     const HRESULT getBufferResult = g_pSwapChain->GetBuffer(0, IID_PPV_ARGS(&pBackBuffer));
     PrintHResult("IDXGISwapChain::GetBuffer end", getBufferResult);
-    if (SUCCEEDED(getBufferResult))
-        printf("[GUI][D3D11] back buffer pointer=%p\n", static_cast<void*>(pBackBuffer));
-    else {
-        printf("[GUI][D3D11] back buffer pointer unavailable because GetBuffer failed\n");
-        printf("[GUI][Path] original path continues to CreateRenderTargetView after GetBuffer failure\n");
+    printf("[GUI][D3D11] back buffer acquisition: result=%s, available=%d\n",
+        SUCCEEDED(getBufferResult) ? "success" : "failure",
+        pBackBuffer != NULL);
+    if (FAILED(getBufferResult) || pBackBuffer == NULL) {
+        printf("[GUI][D3D11] CreateRenderTarget aborted because back buffer is unavailable\n");
+        return;
     }
     printf("[GUI][D3D11] ID3D11Device::CreateRenderTargetView begin\n");
     const HRESULT createRenderTargetViewResult = g_pd3dDevice->CreateRenderTargetView(pBackBuffer, NULL, &g_mainRenderTargetView);
     PrintHResult("ID3D11Device::CreateRenderTargetView end", createRenderTargetViewResult);
-    printf("[GUI][D3D11] render target view pointer=%p\n", static_cast<void*>(g_mainRenderTargetView));
+    printf("[GUI][D3D11] render target view creation: result=%s, available=%d\n",
+        SUCCEEDED(createRenderTargetViewResult) ? "success" : "failure",
+        g_mainRenderTargetView != NULL);
     if (FAILED(createRenderTargetViewResult))
-        printf("[GUI][Path] original path continues to back buffer Release after CreateRenderTargetView failure\n");
+        printf("[GUI][D3D11] CreateRenderTarget completed with no render target view\n");
     printf("[GUI][D3D11] back buffer Release begin\n");
-    pBackBuffer->Release();
+    if (pBackBuffer != NULL)
+        pBackBuffer->Release();
     printf("[GUI][D3D11] back buffer Release end\n");
 }
 
 void CleanupRenderTarget()
 {
-    printf("[GUI][D3D11] CleanupRenderTarget: renderTargetView=%p\n", static_cast<void*>(g_mainRenderTargetView));
+    printf("[GUI][D3D11] CleanupRenderTarget: renderTargetViewPresent=%d\n", g_mainRenderTargetView != NULL);
     if (g_mainRenderTargetView) {
         printf("[GUI][D3D11] render target view Release branch entered\n");
         g_mainRenderTargetView->Release();

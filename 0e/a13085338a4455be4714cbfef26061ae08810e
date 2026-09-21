@@ -1,0 +1,32 @@
+src/hook.cpp
+  s_e9003ff76f857e::t_de70dd7ede46ca 2927,2929-2930
+  s_e9003ff76f857e::t_37eb8721181dc0 2882-2886
+  s_e9003ff76f857e::t_ad508616b394d5 2916-2926
+  s_e9003ff76f857e::t_183c896cc72345 2928
+  s_e9003ff76f857e::t_54722a39d181e1 2933-2943,2946
+  s_e9003ff76f857e::t_e1d6dacf215e6f 3135-3136,3138
+  s_e9003ff76f857e::t_a499195f337640 3498-3499,3505-3507
+  s_e9003ff76f857e::t_c62230dcaa16be 3497
+  s_e9003ff76f857e::t_8cd1460b136b73 3500-3504
+  s_e9003ff76f857e::t_abac54966623d1 3508
+  s_e9003ff76f857e::t_9adaea64a6edaf 2902,2904-2912
+  s_e9003ff76f857e::t_dd376264f3826a 3509-3513,3750-3751
+  s_e9003ff76f857e::t_41ec2de10da520 49,2867-2881,2887-2901,2903,2913-2915
+  s_e9003ff76f857e::t_adc5586403cfc8 2866
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0ea13085338a4455be4714cbfef26061ae08810e",
+  "prompts": {},
+  "sessions": {
+    "s_e9003ff76f857e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0aff7-7b33-7650-b8db-3f22127824b7",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "Muitsonz <muiso8421@gmail.com>"
+    }
+  }
+}

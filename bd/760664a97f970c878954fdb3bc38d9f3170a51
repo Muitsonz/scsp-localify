@@ -1,0 +1,14 @@
+src/hook.cpp
+  h_4c67dbb3a296db 2902,2907
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bd760664a97f970c878954fdb3bc38d9f3170a51",
+  "prompts": {},
+  "humans": {
+    "h_4c67dbb3a296db": {
+      "author": "Muitsonz <muiso8421@gmail.com>"
+    }
+  }
+}

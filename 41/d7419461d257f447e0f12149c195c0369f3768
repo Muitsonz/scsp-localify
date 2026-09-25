@@ -1,0 +1,28 @@
+src/scgui/scGUILoop.cpp
+  s_b71594478a9c3d::t_1a7d01bc22291b 124
+  s_b71594478a9c3d::t_b6f6c495447402 145-147
+src/hook.cpp
+  s_b71594478a9c3d::t_b40030383ce5bb 2162,2871
+  s_b71594478a9c3d::t_ed82ea0554b314 2889,2902-2906,3099
+  s_b71594478a9c3d::t_7f7bad5e37791f 2869,2872-2873
+  s_b71594478a9c3d::t_35f4d9469ed303 2888
+src/stdinclude.hpp
+  s_b71594478a9c3d::t_a650a9e6829244 267
+  s_b71594478a9c3d::t_b45771a41290e8 273
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "41d7419461d257f447e0f12149c195c0369f3768",
+  "prompts": {},
+  "sessions": {
+    "s_b71594478a9c3d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cf04-e44e-7791-a0c4-335d4f341215",
+        "model": "gpt-6-luna"
+      },
+      "human_author": "Muitsonz <muiso8421@gmail.com>"
+    }
+  }
+}

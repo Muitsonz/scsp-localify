@@ -1,0 +1,39 @@
+readme_EN.md
+  s_81fe47076e11f0::t_133533604dbeaa 61
+resources/scsp-config.json
+  s_81fe47076e11f0::t_befaa98e5043e6 20
+src/main.cpp
+  s_81fe47076e11f0::t_3108aa7bc2f3cc 51,259-261
+README.md
+  s_81fe47076e11f0::t_133533604dbeaa 60
+src/hook.cpp
+  s_81fe47076e11f0::t_29a4a9f1194ec1 775,3356-3359,3671
+  s_81fe47076e11f0::t_3108aa7bc2f3cc 768-774
+  s_81fe47076e11f0::t_de38f13f1e36a9 767
+src/stdinclude.hpp
+  s_81fe47076e11f0::t_befaa98e5043e6 407
+src/scgui/scGUILoop.cpp
+  s_81fe47076e11f0::t_133533604dbeaa 481-483
+  s_81fe47076e11f0::t_346b9e985824db 484
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6d9209a228d5a6493e09b02a70a9192bb4ef28b0",
+  "prompts": {},
+  "humans": {
+    "h_4c67dbb3a296db": {
+      "author": "Muitsonz <muiso8421@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_81fe47076e11f0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0dbbf-7d49-7640-adc0-3e8a0bf4944c",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "Muitsonz <muiso8421@gmail.com>"
+    }
+  }
+}

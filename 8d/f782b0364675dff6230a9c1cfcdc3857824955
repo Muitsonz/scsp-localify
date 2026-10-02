@@ -1,0 +1,86 @@
+src/stdinclude.hpp
+  s_bc395267faa61d::t_70ae23baa70266 370-375,379
+  s_028efc5ffa3d8d::t_d676304b349423 415,461
+  s_bc395267faa61d::t_52196eefca96e1 376-378
+  s_bc395267faa61d::t_9f18097ca19ef4 380-381
+src/hook.cpp
+  s_8163b5b362b6a0::t_0ccf29e1a7d6bd 2278-2300,2327,2345
+  s_028efc5ffa3d8d::t_0624cf804aa1b3 2366,2380
+  s_8163b5b362b6a0::t_50d5a04701f0f0 2319-2324,2337-2342,2355-2356,2360-2361
+  s_bc395267faa61d::t_9435a42a86d71d 821-822,2335,2377-2378,2387-2391
+  s_bc395267faa61d::t_b553913adc0bcd 56
+  s_642ff4bc399b1e::t_e4a79c8d262068 787-789,798,823
+  s_bc395267faa61d::t_70ae23baa70266 814-819
+  s_028efc5ffa3d8d::t_d05e0a01e49c55 2267,3534
+  s_028efc5ffa3d8d::t_3cd3f289e5d21e 3535-3536
+  s_028efc5ffa3d8d::t_924295e3b4849e 2307,2314,2379
+  s_8163b5b362b6a0::t_8bc9ce407a99fe 2331,2349,2352-2353
+  s_bc395267faa61d::t_5a1fb76f22dd08 57-58
+  s_642ff4bc399b1e::t_b9eb198cad91bc 784-786
+  s_642ff4bc399b1e::t_140b5456ca3669 790-792,795-797
+  s_bc395267faa61d::t_d98a43cd33d51c 820
+  s_028efc5ffa3d8d::t_a09e2d1dc40015 2264-2266
+  s_028efc5ffa3d8d::t_e5ce712373098a 2308-2313
+  s_8163b5b362b6a0::t_2d0cc912fed109 2325-2326
+  s_8163b5b362b6a0::t_a11186941e58bb 2328-2330
+  s_8163b5b362b6a0::t_60740be68f6ce2 2343-2344
+  s_8163b5b362b6a0::t_f89ccc015a968e 2346-2348
+  s_8163b5b362b6a0::t_6ee89ce0064b2b 2350-2351
+  s_8163b5b362b6a0::t_4684a63c31f27b 2354
+  s_8163b5b362b6a0::t_cf5316a7c73f09 2357-2359
+  s_028efc5ffa3d8d::t_3fbc5373b8ac03 3533
+src/scgui/scGUILoop.cpp
+  s_bc395267faa61d::t_9435a42a86d71d 474-476
+  s_bc395267faa61d::t_972c57f488c3fe 480-486,492-498
+  s_bc395267faa61d::t_dfa50629d1a8f3 441
+  s_bc395267faa61d::t_333270743742ab 431-436,473
+  s_bc395267faa61d::t_70ae23baa70266 437-439,442-451,471,487-488,499-500,507-508
+  s_bc395267faa61d::t_5586c504813b6b 455-456,467-470
+  s_bc395267faa61d::t_ec25c2bd22fa2f 477-479,489-491,501,509-514
+  s_028efc5ffa3d8d::t_0b2c13a0668e3d 453,517-524,579-583,933
+  s_bc395267faa61d::t_b553913adc0bcd 457-466,502-506
+  s_bc395267faa61d::t_28c0ccf0134924 440
+  s_bc395267faa61d::t_6b76e9e760efca 472
+src/main.cpp
+  s_028efc5ffa3d8d::t_4d9478cce0c3e4 47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8df782b0364675dff6230a9c1cfcdc3857824955",
+  "prompts": {},
+  "sessions": {
+    "s_028efc5ffa3d8d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ddcb-c4bb-7302-a50c-2c6f147ec125",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "Muitsonz <muiso8421@gmail.com>"
+    },
+    "s_642ff4bc399b1e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0fb9a-650f-7912-a22a-5d94b93b398a",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "Muitsonz <muiso8421@gmail.com>"
+    },
+    "s_8163b5b362b6a0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0fb79-61fb-7a80-a22c-92f570097479",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "Muitsonz <muiso8421@gmail.com>"
+    },
+    "s_bc395267faa61d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0fbd2-fbfc-75e1-93e0-206ddd1b02b8",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "Muitsonz <muiso8421@gmail.com>"
+    }
+  }
+}
